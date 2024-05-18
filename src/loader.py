@@ -1,3 +1,4 @@
+import re
 import csv
 import pandas as pd
 
@@ -8,6 +9,8 @@ from pathlib import Path
 class TripLoader:
     def __init__(self, fix_csv_errors: bool = True) -> None:
         self.csv_cleaner = CSV_Cleaner()
+        self.regex_extractor = Regex_Extractor()
+
         self.fix_csv_errors = fix_csv_errors
 
         self.ROOT = Path(__file__).parent.parent
@@ -19,7 +22,16 @@ class TripLoader:
         }
 
     def __load(self, dataset: str, delimiter: str = ",") -> pd.DataFrame:
-        return pd.read_csv(self.ROOT / self.file_paths[dataset], delimiter=delimiter)
+        df = pd.read_csv(self.ROOT / self.file_paths[dataset], delimiter=delimiter)
+
+        df["header_category"] = df["header_line"].apply(
+            self.regex_extractor.classify_entry_row
+        )
+        df["header_id"] = df["header_line"].apply(
+            self.regex_extractor.extract_flight_uuid
+        )
+
+        return df
 
     @property
     def trips(self) -> pd.DataFrame:
@@ -60,6 +72,26 @@ class TripLoader:
 
         self._trips_ZYXW_data = self.__load("trips_ZYXW")
         return self._trips_ZYXW_data
+
+
+class Regex_Extractor:
+    @staticmethod
+    def classify_entry_row(text):
+        pattern = r"\b(\w+):$"
+        match = re.search(pattern, text)
+        if match:
+            return match.group(1).lower()
+        return None
+
+    @staticmethod
+    def extract_flight_uuid(log_entry):
+        pattern = re.compile(r"\[([a-f0-9]+)\]")
+        match = pattern.search(log_entry)
+
+        if match:
+            return match.group(1)
+        else:
+            return None
 
 
 class CSV_Cleaner:
