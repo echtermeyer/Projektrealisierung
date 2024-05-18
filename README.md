@@ -1,5 +1,12 @@
 # Project implementation
 
+### Shared collaboration files:
+| Document          | OneDrive Link                                              |
+|-------------------|------------------------------------------------------------|
+| Projektauftrag    | [View & Edit](https://1drv.ms/w/s!AvZXGwwhrAo8ldw-6gRVStEKGVz88w) |
+| Lastenheft        | [View & Edit](https://1drv.ms/w/s!AvZXGwwhrAo8ldw_qo5kH2ZkxTQyug) |
+
+
 ### Installation
 
 Create your virtual environment using:
