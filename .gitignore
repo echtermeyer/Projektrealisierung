@@ -1,3 +1,5 @@
+word/
+
 src/data/ABCD_tripfiles_preprocessed.csv
 src/data/MNOP_tripfiles_preprocessed.csv
 src/data/ZYXW_tripfiles_preprocessed.csv
