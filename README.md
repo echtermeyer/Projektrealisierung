@@ -15,6 +15,7 @@ Install the pre-commit hook:
 ```bash
 pre-commit install
 ```
+After that on windows at least you should use git commands only via venv shell, since otherwise pytest can not be executed. (Lasse)
 
 Run python scripts (no `.py` extension):
 
