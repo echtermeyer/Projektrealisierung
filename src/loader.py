@@ -30,7 +30,7 @@ class TripLoader:
         df["header_id"] = df["header_line"].apply(
             self.regex_extractor.extract_flight_uuid
         )
-
+        df["creation_time"] = df["creation_time"].apply(pd.to_datetime)
         return df
 
     @property
