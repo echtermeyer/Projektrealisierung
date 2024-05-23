@@ -4,7 +4,8 @@
 | Document          | OneDrive Link                                              |
 |-------------------|------------------------------------------------------------|
 | Projektauftrag    | [View & Edit](https://1drv.ms/w/s!AvZXGwwhrAo8ldw-6gRVStEKGVz88w) |
-| Lastenheft        | [View & Edit](https://1drv.ms/w/s!AvZXGwwhrAo8ldw_qo5kH2ZkxTQyug) |
+| Lasten- & Pflichtenheft        | [View & Edit](https://1drv.ms/w/s!AvZXGwwhrAo8ldw_qo5kH2ZkxTQyug) |
+| Präsentation 24.05.2024        | [View & Edit](https://1drv.ms/p/s!AvZXGwwhrAo8lf85jEm3VP-JApFspA) |
 
 
 ### Installation
