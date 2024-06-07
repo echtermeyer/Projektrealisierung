@@ -31,7 +31,7 @@ class Regex_Extractor:
         return extracted_dict
 
     @staticmethod
-    def extract_flight_uuid(log_entry):
+    def extract_header_id(log_entry):
         pattern = re.compile(r"\[([a-f0-9]+)\]")
         match = pattern.search(log_entry)
 
@@ -87,12 +87,12 @@ class Preprocessor:
 
     def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
         print("Preprocessing data...")
-        print("Extracting header category and flight UUID...")
+        print("Extracting header category and header id...")
         df["header_category"] = df["header_line"].apply(
             self.regex_extractor.classify_entry_row
         )
         df["header_id"] = df["header_line"].apply(
-            self.regex_extractor.extract_flight_uuid
+            self.regex_extractor.extract_header_id
         )
         df["creation_time"] = df["creation_time"].apply(pd.to_datetime)
         print("Processing ASMMsgProcessor...")
@@ -100,6 +100,9 @@ class Preprocessor:
 
         print("Processing CalculateWeightAndTrimAction...")
         df = self.__process_CalculateWeightAndTrimAction(df)
+
+        print("Deriving flight id...")
+        df = self.__derive_flight_id(df)
 
         return df
 
@@ -155,3 +158,15 @@ class Preprocessor:
         pairs_df.rename(columns={"index": "id"}, inplace=True)
 
         return pd.merge(df, pairs_df, on="id", how="left")
+
+    def __derive_flight_id(self, df: pd.DataFrame) -> pd.DataFrame:
+        df['flight_id'] = (
+            df['airline_code'].astype(str) + '_' +
+            df['flight_number'].astype(str) + '_' +
+            df['flight_date'].astype(str) + '_' +
+            df['departure_airport'].astype(str)
+        )
+
+        df = df[["flight_id"] + [col for col in df.columns if col != "flight_id"]]
+        
+        return df
