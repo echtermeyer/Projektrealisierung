@@ -8,6 +8,8 @@ src/data/ABCD_tripfiles.csv
 src/data/MNOP_tripfiles.csv
 src/data/ZYXW_tripfiles.csv
 
+experiments/benedikt/data/
+
 .DS_Store
 
 # Byte-compiled / optimized / DLL files
