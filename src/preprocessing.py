@@ -7,7 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 from pathlib import Path
 
-from typing import Tuple, List, Dict
+from typing import Dict
 
 from src.utils import COLUMNS_CalculateWeightAndTrimAction
 
@@ -95,13 +95,21 @@ class DF_Cleaner:
 
 
 class Preprocessor:
-    def __init__(self) -> None:
+    def __init__(self, root: Path) -> None:
+        self.DATA_DIR = root / "src/data/extracted/"
+        self.DATA_DIR.mkdir(exist_ok=True)
+
         self.df_cleaner = DF_Cleaner()
         self.regex_extractor = Regex_Extractor()
 
-    def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
+    def preprocess(self, df: pd.DataFrame, dataset: str) -> pd.DataFrame:
         print("Preprocessing data...")
-        print("Extracting header category and header id...")
+
+        print("--Inserting column for extracted data...")
+        df["extracted_data_path"] = None
+        prefix = dataset.split("_")[1].lower()
+
+        print("--Extracting header category and header id...")
         df["header_category"] = df["header_line"].apply(
             self.regex_extractor.classify_entry_row
         )
@@ -109,14 +117,15 @@ class Preprocessor:
             self.regex_extractor.extract_header_id
         )
         df["creation_time"] = df["creation_time"].apply(pd.to_datetime)
-        print("Processing ASMMsgProcessor...")
+
+        print("--Processing ASMMsgProcessor...")
         df = self.__process_ASMMsgProcessor(df)
 
-        print("Processing CalculateWeightAndTrimAction...")
-        df = self.__process_CalculateWeightAndTrimAction(df)
-
-        print("Deriving flight id...")
+        print("--Deriving flight id...")
         df = self.__derive_flight_id(df)
+
+        print("--Processing CalculateWeightAndTrimAction...")
+        df = self.__process_CalculateWeightAndTrimAction(df, prefix)
 
         return df
 
@@ -152,30 +161,43 @@ class Preprocessor:
 
         return pd.merge(df, pairs_df, on="header_id", how="left")
 
-    def __process_CalculateWeightAndTrimAction(self, df: pd.DataFrame) -> pd.DataFrame:
+    def __process_CalculateWeightAndTrimAction(
+        self, df: pd.DataFrame, prefix: str
+    ) -> pd.DataFrame:
+        NAME = "CalculateWeightAndTrimAction"
+        PATH = self.DATA_DIR / f"{prefix}_{NAME}.csv"
+
         filtered = df[
             (df["action_name"] == "CalculateWeightAndTrimAction")
             & (df["header_category"] == "saved")
         ]
 
-        pairs = {}
+        data = {}
         for _, row in filtered.iterrows():
             raw_data = row["entry_details"]
             extracted_data = self.regex_extractor.extract_CalculateWeightAndTrimAction(
                 raw_data
             )
+            extracted_data["flight_id"] = row["flight_id"]
+            extracted_data["action_name"] = row["action_name"]
 
-            pairs[row["id"]] = extracted_data
+            data[row["id"]] = extracted_data
 
-        pairs_df = pd.DataFrame.from_dict(pairs, orient="index")
-        pairs_df.reset_index(inplace=True)
-        pairs_df.rename(columns={"index": "id"}, inplace=True)
+        data_df = pd.DataFrame.from_dict(data, orient="index")
+        data_df.reset_index(inplace=True)
+        data_df.rename(columns={"index": "id"}, inplace=True)
 
-        uncleaned_df = pd.merge(df, pairs_df, on="id", how="left")
-        cleaned_df = self.df_cleaner.remove_column_anonymization(
-            uncleaned_df, COLUMNS_CalculateWeightAndTrimAction
+        first_columns = ["flight_id", "id", "action_name"]
+        following_columns = [col for col in data_df.columns if col not in first_columns]
+
+        data_df = data_df[first_columns + following_columns]
+        data_df = self.df_cleaner.remove_column_anonymization(
+            data_df, COLUMNS_CalculateWeightAndTrimAction
         )
-        return cleaned_df
+        data_df.to_csv(PATH, index=False)
+
+        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
+        return df
 
     def __derive_flight_id(self, df: pd.DataFrame) -> pd.DataFrame:
         df["flight_id"] = (

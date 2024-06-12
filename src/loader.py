@@ -8,9 +8,6 @@ from src.preprocessing import Preprocessor, CSV_Cleaner
 
 class TripLoader:
     def __init__(self) -> None:
-        self.csv_cleaner = CSV_Cleaner()
-        self.preprocessor = Preprocessor()
-
         self.ROOT = Path(__file__).parent.parent
         self.file_paths = {
             "trips": "src/data/tripfile.csv",
@@ -18,6 +15,9 @@ class TripLoader:
             "trips_MNOP": "src/data/MNOP_tripfiles.csv",
             "trips_ZYXW": "src/data/ZYXW_tripfiles.csv",
         }
+
+        self.csv_cleaner = CSV_Cleaner()
+        self.preprocessor = Preprocessor(self.ROOT)
 
     def __load(self, dataset: str, delimiter: str = ",") -> pd.DataFrame:
         unprocessed_file = self.ROOT / self.file_paths[dataset]
@@ -38,7 +38,7 @@ class TripLoader:
         unprocessed_df = pd.read_csv(
             self.ROOT / self.file_paths[dataset], delimiter=delimiter
         )
-        processed_df = self.preprocessor.preprocess(unprocessed_df)
+        processed_df = self.preprocessor.preprocess(unprocessed_df, dataset)
         processed_df.to_csv(processed_file, index=False)
 
         return processed_df

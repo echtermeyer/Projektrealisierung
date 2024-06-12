@@ -4,6 +4,8 @@ src/data/ABCD_tripfiles_preprocessed.csv
 src/data/MNOP_tripfiles_preprocessed.csv
 src/data/ZYXW_tripfiles_preprocessed.csv
 
+src/data/extracted/
+
 src/data/ABCD_tripfiles.csv
 src/data/MNOP_tripfiles.csv
 src/data/ZYXW_tripfiles.csv
