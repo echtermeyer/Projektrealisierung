@@ -25,6 +25,42 @@ COLUMNS_CalculateWeightAndTrimAction = {
     "LIMITING_WMNGHT": "LIMITING_WEIGHT",
 }
 
+COLUMNS_AssignLCCAction = [
+    "A/L",
+    "Flt No",
+    "Suff",
+    "Date",
+    "DEP",
+    "ARR",
+    "STD in UTC",
+    "ETD in UTC",
+    "AC Type",
+    "Reg",
+    "Assigned user",
+    "Planned user",
+    "Location",
+]
+COLUMNS_UpdateFlightAction_METADATA = ["Airline", "Flightnumber", "Suffix", "Date"]
+
+COLUMNS_UpdateFlightAction_RECEIVED = [
+    "DEP",
+    "STD in UTC",
+    "ETD in UTC",
+    "DEST",
+    "TRANSIT",
+    "CANCELLED",
+    "DELETED",
+]
+
+COLUMNS_UpdateFlightAction_SAVED = [
+    "DEP",
+    "STD in UTC",
+    "ETD in UTC",
+    "DEST",
+    "TRANSIT",
+    "CANCELLED",
+]
+
 
 airport_coords = {
     "BLR": [12.972442, 77.580643],  # Bangalore, India

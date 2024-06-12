@@ -7,9 +7,15 @@ import pandas as pd
 from tqdm import tqdm
 from pathlib import Path
 
-from typing import Dict
+from typing import Dict, List
 
-from src.utils import COLUMNS_CalculateWeightAndTrimAction
+from src.utils import (
+    COLUMNS_CalculateWeightAndTrimAction,
+    COLUMNS_AssignLCCAction,
+    COLUMNS_UpdateFlightAction_METADATA,
+    COLUMNS_UpdateFlightAction_RECEIVED,
+    COLUMNS_UpdateFlightAction_SAVED,
+)
 
 
 class Regex_Extractor:
@@ -32,6 +38,43 @@ class Regex_Extractor:
             key = match.group(1).replace(" ", "_").strip("_")
             value = match.group(2).strip()
             extracted_dict[key] = float(value) if value and value != "NULL" else None
+        return extracted_dict
+
+    @staticmethod
+    def extract_AssignLCCAction(entry_string):
+        data = entry_string.split("\n")[1]
+
+        values = re.findall(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}|\S+", data)
+        return dict(zip(COLUMNS_AssignLCCAction, values))
+
+    @staticmethod
+    def extract_UpdateFlightAction(entry_string: str, header_category: str):
+        if header_category == "received":
+            leg_keys = COLUMNS_UpdateFlightAction_RECEIVED
+        elif header_category == "saved":
+            leg_keys = COLUMNS_UpdateFlightAction_SAVED
+
+        lines = entry_string.split("\n")
+
+        extracted_dict = {}
+        for line in lines[0:1]:
+            for key in COLUMNS_UpdateFlightAction_METADATA:
+                pattern = f"{key}: (.*?)(?=\s+\w+:|$)"
+                match = re.search(pattern, line)
+                if match:
+                    extracted_dict[key] = match.group(1).strip()
+
+        legs = []
+        legs_start_index = lines.index("Legs:") + 2
+        for line in lines[legs_start_index:]:
+            if line.strip() == "":
+                continue
+
+            values = re.findall(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}|\S+", line)
+            leg_data = dict(zip(leg_keys, values))
+            legs.append(leg_data)
+
+        extracted_dict["legs"] = legs
         return extracted_dict
 
     @staticmethod
@@ -118,14 +161,20 @@ class Preprocessor:
         )
         df["creation_time"] = df["creation_time"].apply(pd.to_datetime)
 
-        print("--Processing ASMMsgProcessor...")
+        print("-- Processing ASMMsgProcessor...")
         df = self.__process_ASMMsgProcessor(df)
 
-        print("--Deriving flight id...")
+        print("-- Deriving flight id...")
         df = self.__derive_flight_id(df)
 
-        print("--Processing CalculateWeightAndTrimAction...")
+        print("-- Processing CalculateWeightAndTrimAction...")
         df = self.__process_CalculateWeightAndTrimAction(df, prefix)
+
+        print("-- Processing AssignLCCAction...")
+        df = self.__process_AssignLCCAction(df, prefix)
+
+        print("-- Processing UpdateFlightAction...")
+        df = self.__process_UpdateFlightAction(df, prefix)
 
         return df
 
@@ -167,10 +216,7 @@ class Preprocessor:
         NAME = "CalculateWeightAndTrimAction"
         PATH = self.DATA_DIR / f"{prefix}_{NAME}.csv"
 
-        filtered = df[
-            (df["action_name"] == "CalculateWeightAndTrimAction")
-            & (df["header_category"] == "saved")
-        ]
+        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
 
         data = {}
         for _, row in filtered.iterrows():
@@ -197,6 +243,79 @@ class Preprocessor:
         data_df.to_csv(PATH, index=False)
 
         df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
+        return df
+
+    def __process_AssignLCCAction(self, df: pd.DataFrame, prefix: str) -> pd.DataFrame:
+        NAME = "AssignLCCAction"
+        PATH = self.DATA_DIR / f"{prefix}_{NAME}.csv"
+
+        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
+
+        data = {}
+        for _, row in filtered.iterrows():
+            raw_data = row["entry_details"]
+            extracted_data = self.regex_extractor.extract_AssignLCCAction(raw_data)
+            extracted_data["flight_id"] = row["flight_id"]
+            extracted_data["action_name"] = row["action_name"]
+
+            data[row["id"]] = extracted_data
+
+        data_df = pd.DataFrame.from_dict(data, orient="index")
+        data_df.reset_index(inplace=True)
+        data_df.rename(columns={"index": "id"}, inplace=True)
+
+        first_columns = ["flight_id", "id", "action_name"]
+        following_columns = [col for col in data_df.columns if col not in first_columns]
+
+        data_df = data_df[first_columns + following_columns]
+        data_df = self.df_cleaner.remove_column_anonymization(
+            data_df, COLUMNS_CalculateWeightAndTrimAction
+        )
+        data_df.to_csv(PATH, index=False)
+
+        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
+        return df
+
+    def __process_UpdateFlightAction(
+        self, df: pd.DataFrame, prefix: str
+    ) -> pd.DataFrame:
+        NAME = "UpdateFlightAction"
+
+        for header_category in ["received", "saved"]:
+            PATH = self.DATA_DIR / f"{prefix}_{NAME}_{header_category}.csv"
+
+            filtered = df[
+                (df["action_name"] == NAME) & (df["header_category"] == header_category)
+            ]
+
+            data = {}
+            for _, row in filtered.iterrows():
+                raw_data = row["entry_details"]
+                extracted_data = self.regex_extractor.extract_UpdateFlightAction(
+                    raw_data, header_category
+                )
+                extracted_data["flight_id"] = row["flight_id"]
+                extracted_data["action_name"] = row["action_name"]
+
+                data[row["id"]] = extracted_data
+
+            data_df = pd.DataFrame.from_dict(data, orient="index")
+            data_df.reset_index(inplace=True)
+            data_df.rename(columns={"index": "id"}, inplace=True)
+
+            first_columns = ["flight_id", "id", "action_name"]
+            following_columns = [
+                col for col in data_df.columns if col not in first_columns
+            ]
+
+            data_df = data_df[first_columns + following_columns]
+            data_df = self.df_cleaner.remove_column_anonymization(
+                data_df, COLUMNS_CalculateWeightAndTrimAction
+            )
+            data_df.to_csv(PATH, index=False)
+
+            df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
+
         return df
 
     def __derive_flight_id(self, df: pd.DataFrame) -> pd.DataFrame:
