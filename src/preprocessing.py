@@ -7,6 +7,10 @@ import pandas as pd
 from tqdm import tqdm
 from pathlib import Path
 
+from typing import Tuple, List, Dict
+
+from src.utils import COLUMNS_CalculateWeightAndTrimAction
+
 
 class Regex_Extractor:
     @staticmethod
@@ -81,8 +85,18 @@ class CSV_Cleaner:
             file.write(content)
 
 
+class DF_Cleaner:
+    @staticmethod
+    def remove_column_anonymization(
+        df: pd.DataFrame,
+        column_dict: Dict[str, str],
+    ) -> pd.DataFrame:
+        return df.rename(columns=column_dict)
+
+
 class Preprocessor:
     def __init__(self) -> None:
+        self.df_cleaner = DF_Cleaner()
         self.regex_extractor = Regex_Extractor()
 
     def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -157,16 +171,21 @@ class Preprocessor:
         pairs_df.reset_index(inplace=True)
         pairs_df.rename(columns={"index": "id"}, inplace=True)
 
-        return pd.merge(df, pairs_df, on="id", how="left")
+        uncleaned_df = pd.merge(df, pairs_df, on="id", how="left")
+        cleaned_df = self.df_cleaner.remove_column_anonymization(
+            uncleaned_df, COLUMNS_CalculateWeightAndTrimAction
+        )
+        return cleaned_df
 
     def __derive_flight_id(self, df: pd.DataFrame) -> pd.DataFrame:
-        df['flight_id'] = (
-            df['airline_code'].astype(str) + '_' +
-            df['flight_number'].astype(str) + '_' +
-            df['flight_date'].astype(str) + '_' +
-            df['departure_airport'].astype(str)
+        df["flight_id"] = (
+            df["airline_code"].astype(str)
+            + "_"
+            + df["flight_number"].astype(str)
+            + "_"
+            + df["flight_date"].astype(str)
+            + "_"
+            + df["departure_airport"].astype(str)
         )
 
-        df = df[["flight_id"] + [col for col in df.columns if col != "flight_id"]]
-        
-        return df
+        return df[["flight_id"] + [col for col in df.columns if col != "flight_id"]]
