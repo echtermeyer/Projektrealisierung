@@ -15,6 +15,9 @@ from src.utils import (
     COLUMNS_UpdateFlightAction_METADATA,
     COLUMNS_UpdateFlightAction_RECEIVED,
     COLUMNS_UpdateFlightAction_SAVED,
+    COLUMNS_UpdateCrewDataAction,
+    COLUMNS_StoreRegistrationAndConfigurationAc,
+    COLUMNS_StoreRegistrationAndConfigurationAc_STATUS_KEYS,
 )
 
 
@@ -75,6 +78,63 @@ class Regex_Extractor:
             legs.append(leg_data)
 
         extracted_dict["legs"] = legs
+        return extracted_dict
+
+    @staticmethod
+    def extract_UpdateCrewDataAction(entry_string: str):
+        combined_lines = " ".join(entry_string.split("\n")[1:])
+
+        pattern = "|".join(re.escape(key) for key in COLUMNS_UpdateCrewDataAction)
+        parts = re.split(f"({pattern})", combined_lines)
+
+        key = None
+        extracted_dict = {}
+        for part in parts:
+            if part in COLUMNS_UpdateCrewDataAction:
+                key = part
+            elif key:
+                value = part.lstrip(":").strip().lstrip(":").strip()
+
+                if value == "NULL":
+                    value = None
+                elif value.isdigit():
+                    value = int(value)
+
+                extracted_dict[key] = value
+                key = None
+
+        return extracted_dict
+
+    @staticmethod
+    def extract_StoreRegistrationAndConfigurationAc(entry_string: str):
+        extracted_dict = {}
+        for key in COLUMNS_StoreRegistrationAndConfigurationAc:
+            pattern = rf"{re.escape(key)}\s*:\s*([\d./]+|NULL)"
+            match = re.search(pattern, entry_string)
+            if match:
+                value = match.group(1)
+                if value == "NULL":
+                    extracted_dict[key] = None
+                elif value.replace(".", "", 1).isdigit():
+                    extracted_dict[key] = float(value)
+                else:
+                    extracted_dict[key] = value
+
+        status_data = {}
+        status_key_pattern = re.compile(r"STATUS\s+(.*)")
+        status_part = status_key_pattern.search(entry_string)
+        if status_part:
+            statuses = status_part.group(1).split()
+            for i in range(0, len(statuses), 2):
+                key = "STATUS_" + statuses[i]
+                status_data[key] = int(statuses[i + 1])
+
+        for key in COLUMNS_StoreRegistrationAndConfigurationAc_STATUS_KEYS:
+            prefixed_key = "STATUS_" + key
+            if prefixed_key not in status_data:
+                status_data[prefixed_key] = None
+
+        extracted_dict.update(status_data)
         return extracted_dict
 
     @staticmethod
@@ -148,11 +208,11 @@ class Preprocessor:
     def preprocess(self, df: pd.DataFrame, dataset: str) -> pd.DataFrame:
         print("Preprocessing data...")
 
-        print("--Inserting column for extracted data...")
+        print("-- Inserting column for extracted data...")
         df["extracted_data_path"] = None
         prefix = dataset.split("_")[1].lower()
 
-        print("--Extracting header category and header id...")
+        print("-- Extracting header category and header id...")
         df["header_category"] = df["header_line"].apply(
             self.regex_extractor.classify_entry_row
         )
@@ -175,6 +235,12 @@ class Preprocessor:
 
         print("-- Processing UpdateFlightAction...")
         df = self.__process_UpdateFlightAction(df, prefix)
+
+        print("-- Processing UpdateCrewDataAction...")
+        df = self.__process_UpdateCrewDataAction(df, prefix)
+
+        print("-- Processing StoreRegistrationAndConfigurationAc...")
+        df = self.__process_StoreRegistrationAndConfigurationAc(df, prefix)
 
         return df
 
@@ -316,6 +382,78 @@ class Preprocessor:
 
             df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
 
+        return df
+
+    def __process_UpdateCrewDataAction(
+        self, df: pd.DataFrame, prefix: str
+    ) -> pd.DataFrame:
+        NAME = "UpdateCrewDataAction"
+        PATH = self.DATA_DIR / f"{prefix}_{NAME}.csv"
+
+        filtered = df[
+            (df["action_name"] == NAME) & (df["header_category"] == "received")
+        ]
+
+        data = {}
+        for _, row in filtered.iterrows():
+            raw_data = row["entry_details"]
+            extracted_data = self.regex_extractor.extract_UpdateCrewDataAction(raw_data)
+            extracted_data["flight_id"] = row["flight_id"]
+            extracted_data["action_name"] = row["action_name"]
+
+            data[row["id"]] = extracted_data
+
+        data_df = pd.DataFrame.from_dict(data, orient="index")
+        data_df.reset_index(inplace=True)
+        data_df.rename(columns={"index": "id"}, inplace=True)
+
+        first_columns = ["flight_id", "id", "action_name"]
+        following_columns = [col for col in data_df.columns if col not in first_columns]
+
+        data_df = data_df[first_columns + following_columns]
+        data_df = self.df_cleaner.remove_column_anonymization(
+            data_df, COLUMNS_CalculateWeightAndTrimAction
+        )
+        data_df.to_csv(PATH, index=False)
+
+        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
+        return df
+
+    def __process_StoreRegistrationAndConfigurationAc(
+        self, df: pd.DataFrame, prefix: str
+    ) -> pd.DataFrame:
+        NAME = "StoreRegistrationAndConfigurationAc"
+        PATH = self.DATA_DIR / f"{prefix}_{NAME}.csv"
+
+        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
+
+        data = {}
+        for _, row in filtered.iterrows():
+            raw_data = row["entry_details"]
+            extracted_data = (
+                self.regex_extractor.extract_StoreRegistrationAndConfigurationAc(
+                    raw_data
+                )
+            )
+            extracted_data["flight_id"] = row["flight_id"]
+            extracted_data["action_name"] = row["action_name"]
+
+            data[row["id"]] = extracted_data
+
+        data_df = pd.DataFrame.from_dict(data, orient="index")
+        data_df.reset_index(inplace=True)
+        data_df.rename(columns={"index": "id"}, inplace=True)
+
+        first_columns = ["flight_id", "id", "action_name"]
+        following_columns = [col for col in data_df.columns if col not in first_columns]
+
+        data_df = data_df[first_columns + following_columns]
+        data_df = self.df_cleaner.remove_column_anonymization(
+            data_df, COLUMNS_CalculateWeightAndTrimAction
+        )
+        data_df.to_csv(PATH, index=False)
+
+        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
         return df
 
     def __derive_flight_id(self, df: pd.DataFrame) -> pd.DataFrame:

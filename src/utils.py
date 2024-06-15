@@ -40,7 +40,20 @@ COLUMNS_AssignLCCAction = [
     "Planned user",
     "Location",
 ]
+
 COLUMNS_UpdateFlightAction_METADATA = ["Airline", "Flightnumber", "Suffix", "Date"]
+
+COLUMNS_UpdateCrewDataAction = [
+    "Cockpit crew nr.",
+    "Cockpit crew bag nr.",
+    "Cabin crew nr.",
+    "Cabin crew bag nr.",
+    "As crew nr.",
+    "As pax nr.",
+    "Deadhead cabin crew nr.",
+    "Deadhead cockpit crew nr.",
+    "Captain`s name",
+]
 
 COLUMNS_UpdateFlightAction_RECEIVED = [
     "DEP",
@@ -61,6 +74,36 @@ COLUMNS_UpdateFlightAction_SAVED = [
     "CANCELLED",
 ]
 
+COLUMNS_StoreRegistrationAndConfigurationAc = [
+    "Start Weight",
+    "Start Index",
+    "Crew",
+    "Water(%)",
+    "Total Weight",
+    "Index",
+]
+
+COLUMNS_StoreRegistrationAndConfigurationAc_STATUS_KEYS = [
+    "AIRBORNE",
+    "AIRCRAFT_CONFIG",
+    "AUTOMATION_STARTED",
+    "AUTO_MODE_ACTIVE",
+    "BAG_LOAD_ITEMS_GEN",
+    "CABIN_CONFIG",
+    "CARGO_FINAL",
+    "CARGO_TRANSFER",
+    "CHECK_IN_FINAL",
+    "DGR_ITEMS",
+    "EZFW",
+    "EZFW_COUNTER",
+    "FUEL",
+    "FUEL_ORDER",
+    "LOADING_INSTRUCTION",
+    "OFFBLOCK",
+    "OFP",
+    "REGISTRATION",
+    "REGISTRATION_CHANGE",
+]
 
 airport_coords = {
     "BLR": [12.972442, 77.580643],  # Bangalore, India
