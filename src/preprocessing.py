@@ -7,7 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 from pathlib import Path
 
-from typing import Dict, List
+from typing import Callable, Dict, List, Optional
 
 from src.utils import (
     COLUMNS_CalculateWeightAndTrimAction,
@@ -28,6 +28,7 @@ from src.utils import (
     COLUMNS_UpdateFuelDataAction_MW_KEYS,
     COLUMNS_UpdateFuelDataAction_FUEL_KEYS,
     COLUMNS_UpdateFuelDataAction_received,
+    COLUMNS_UpdateFuelDataAction_ANONYMIZATION,
 )
 
 
@@ -447,13 +448,161 @@ class Preprocessor:
         self.regex_extractor = Regex_Extractor()
 
     def preprocess(self, df: pd.DataFrame, dataset: str) -> pd.DataFrame:
-        print("Preprocessing data...")
+        steps = [
+            (
+                "Inserting column for extracted data",
+                lambda df: df.assign(extracted_data_path=None),
+            ),
+            ("Extracting header category and header id", self.__extract_header_info),
+            ("Processing ASMMsgProcessor", self.__process_ASMMsgProcessor),
+            ("Deriving flight id", self.__derive_flight_id),
+            (
+                "Processing CalculateWeightAndTrimAction",
+                lambda df: self.__process_wrapper(
+                    df=df,
+                    dataset_name=dataset.split("_")[1].lower(),
+                    action_name="CalculateWeightAndTrimAction",
+                    header_category="saved",
+                    use_suffix=False,
+                    fn_extractor=self.regex_extractor.extract_CalculateWeightAndTrimAction,
+                    column_anonymization=COLUMNS_CalculateWeightAndTrimAction,
+                ),
+            ),
+            (
+                "Processing AssignLCCAction",
+                lambda df: self.__process_wrapper(
+                    df=df,
+                    dataset_name=dataset.split("_")[1].lower(),
+                    action_name="AssignLCCAction",
+                    header_category="saved",
+                    use_suffix=False,
+                    fn_extractor=self.regex_extractor.extract_AssignLCCAction,
+                ),
+            ),
+            (
+                "Processing UpdateFlightAction",
+                lambda df: self.__process_wrapper(
+                    df=df,
+                    dataset_name=dataset.split("_")[1].lower(),
+                    action_name="UpdateFlightAction",
+                    header_category="received",
+                    use_suffix=True,
+                    fn_extractor=self.regex_extractor.extract_UpdateFlightAction,
+                    parse_header_category=True,
+                ),
+            ),
+            (
+                "Processing UpdateFlightAction (saved)",
+                lambda df: self.__process_wrapper(
+                    df=df,
+                    dataset_name=dataset.split("_")[1].lower(),
+                    action_name="UpdateFlightAction",
+                    header_category="saved",
+                    use_suffix=True,
+                    fn_extractor=self.regex_extractor.extract_UpdateFlightAction,
+                    parse_header_category=True,
+                ),
+            ),
+            (
+                "Processing UpdateCrewDataAction",
+                lambda df: self.__process_wrapper(
+                    df=df,
+                    dataset_name=dataset.split("_")[1].lower(),
+                    action_name="UpdateCrewDataAction",
+                    header_category="received",
+                    use_suffix=False,
+                    fn_extractor=self.regex_extractor.extract_UpdateCrewDataAction,
+                ),
+            ),
+            (
+                "Processing StoreRegistrationAndConfigurationAc",
+                lambda df: self.__process_wrapper(
+                    df=df,
+                    dataset_name=dataset.split("_")[1].lower(),
+                    action_name="StoreRegistrationAndConfigurationAc",
+                    header_category="saved",
+                    use_suffix=False,
+                    fn_extractor=self.regex_extractor.extract_StoreRegistrationAndConfigurationAc,
+                ),
+            ),
+            (
+                "Processing UpdateLoadTableAction",
+                lambda df: self.__process_wrapper(
+                    df=df,
+                    dataset_name=dataset.split("_")[1].lower(),
+                    action_name="UpdateLoadTableAction",
+                    header_category="saved",
+                    use_suffix=True,
+                    fn_extractor=self.regex_extractor.extract_UpdateLoadTableAction,
+                ),
+            ),
+            (
+                "Processing StorePaxDataAction (saved)",
+                lambda df: self.__process_wrapper(
+                    df=df,
+                    dataset_name=dataset.split("_")[1].lower(),
+                    action_name="StorePaxDataAction",
+                    header_category="saved",
+                    use_suffix=True,
+                    fn_extractor=self.regex_extractor.extract_StorePaxDataAction_saved,
+                ),
+            ),
+            (
+                "Processing StorePaxDataAction (received)",
+                lambda df: self.__process_wrapper(
+                    df=df,
+                    dataset_name=dataset.split("_")[1].lower(),
+                    action_name="StorePaxDataAction",
+                    header_category="received",
+                    use_suffix=True,
+                    fn_extractor=self.regex_extractor.extract_StorePaxDataAction_received,
+                ),
+            ),
+            (
+                "Processing FuelDataInitializer",
+                lambda df: self.__process_wrapper(
+                    df=df,
+                    dataset_name=dataset.split("_")[1].lower(),
+                    action_name="FuelDataInitializer",
+                    header_category="saved",
+                    use_suffix=False,
+                    fn_extractor=self.regex_extractor.extract_FuelDataInitializer,
+                ),
+            ),
+            (
+                "Processing UpdateFuelDataAction (saved)",
+                lambda df: self.__process_wrapper(
+                    df=df,
+                    dataset_name=dataset.split("_")[1].lower(),
+                    action_name="UpdateFuelDataAction",
+                    header_category="saved",
+                    use_suffix=True,
+                    fn_extractor=self.regex_extractor.extract_UpdateFuelDataAction_saved,
+                    column_anonymization=COLUMNS_UpdateFuelDataAction_ANONYMIZATION,
+                ),
+            ),
+            (
+                "Processing UpdateFuelDataAction (received)",
+                lambda df: self.__process_wrapper(
+                    df=df,
+                    dataset_name=dataset.split("_")[1].lower(),
+                    action_name="UpdateFuelDataAction",
+                    header_category="received",
+                    use_suffix=True,
+                    fn_extractor=self.regex_extractor.extract_UpdateFuelDataAction_received,
+                ),
+            ),
+        ]
 
-        print("-- Inserting column for extracted data...")
-        df["extracted_data_path"] = None
-        prefix = dataset.split("_")[1].lower()
+        with tqdm(total=len(steps), desc="Preprocessing Steps") as pbar:
+            for description, function in steps:
+                pbar.set_description(description)
+                df = function(df)
+                pbar.update(1)
 
-        print("-- Extracting header category and header id...")
+        return df
+
+    def __extract_header_info(self, df):
         df["header_category"] = df["header_line"].apply(
             self.regex_extractor.classify_entry_row
         )
@@ -461,42 +610,6 @@ class Preprocessor:
             self.regex_extractor.extract_header_id
         )
         df["creation_time"] = df["creation_time"].apply(pd.to_datetime)
-
-        print("-- Processing ASMMsgProcessor...")
-        df = self.__process_ASMMsgProcessor(df)
-
-        print("-- Deriving flight id...")
-        df = self.__derive_flight_id(df)
-
-        print("-- Processing CalculateWeightAndTrimAction...")
-        df = self.__process_CalculateWeightAndTrimAction(df, prefix)
-
-        print("-- Processing AssignLCCAction...")
-        df = self.__process_AssignLCCAction(df, prefix)
-
-        print("-- Processing UpdateFlightAction...")
-        df = self.__process_UpdateFlightAction(df, prefix)
-
-        print("-- Processing UpdateCrewDataAction...")
-        df = self.__process_UpdateCrewDataAction(df, prefix)
-
-        print("-- Processing StoreRegistrationAndConfigurationAc...")
-        df = self.__process_StoreRegistrationAndConfigurationAc(df, prefix)
-
-        print("-- Processing UpdateLoadTableAction...")
-        df = self.__process_UpdateLoadTableAction(df, prefix)
-
-        print("-- Processing StorePaxDataAction...")
-        df = self.__process_StorePaxDataAction_saved(df, prefix)
-        df = self.__process_StorePaxDataAction_received(df, prefix)
-
-        print("-- Processing FuelDataInitializer...")
-        df = self.__process_FuelDataInitializer(df, prefix)
-
-        print("-- Processing UpdateFuelDataAction...")
-        df = self.__process_UpdateFuelDataAction_saved(df, prefix)
-        df = self.__process_UpdateFuelDataAction_received(df, prefix)
-
         return df
 
     def __process_ASMMsgProcessor(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -531,20 +644,34 @@ class Preprocessor:
 
         return pd.merge(df, pairs_df, on="header_id", how="left")
 
-    def __process_CalculateWeightAndTrimAction(
-        self, df: pd.DataFrame, prefix: str
+    def __process_wrapper(
+        self,
+        df: pd.DataFrame,
+        dataset_name: str,
+        action_name: str,
+        header_category: str,
+        use_suffix: bool,
+        fn_extractor: Callable,
+        column_anonymization: Optional[List[str]] = None,
+        parse_header_category: bool = False,
     ) -> pd.DataFrame:
-        NAME = "CalculateWeightAndTrimAction"
-        PATH = self.DATA_DIR / f"{prefix}_{NAME}.csv"
+        if use_suffix:
+            PATH = self.DATA_DIR / f"{dataset_name}_{action_name}_{header_category}.csv"
+        else:
+            PATH = self.DATA_DIR / f"{dataset_name}_{action_name}.csv"
 
-        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
+        filtered = df[
+            (df["action_name"] == action_name)
+            & (df["header_category"] == header_category)
+        ]
 
         data = {}
         for _, row in filtered.iterrows():
             raw_data = row["entry_details"]
-            extracted_data = self.regex_extractor.extract_CalculateWeightAndTrimAction(
-                raw_data
-            )
+            if parse_header_category:
+                extracted_data = fn_extractor(raw_data, header_category)
+            else:
+                extracted_data = fn_extractor(raw_data)
             extracted_data["flight_id"] = row["flight_id"]
             extracted_data["action_name"] = row["action_name"]
 
@@ -558,366 +685,10 @@ class Preprocessor:
         following_columns = [col for col in data_df.columns if col not in first_columns]
 
         data_df = data_df[first_columns + following_columns]
-        data_df = self.df_cleaner.remove_column_anonymization(
-            data_df, COLUMNS_CalculateWeightAndTrimAction
-        )
-        data_df.to_csv(PATH, index=False)
-
-        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
-        return df
-
-    def __process_AssignLCCAction(self, df: pd.DataFrame, prefix: str) -> pd.DataFrame:
-        NAME = "AssignLCCAction"
-        PATH = self.DATA_DIR / f"{prefix}_{NAME}.csv"
-
-        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
-
-        data = {}
-        for _, row in filtered.iterrows():
-            raw_data = row["entry_details"]
-            extracted_data = self.regex_extractor.extract_AssignLCCAction(raw_data)
-            extracted_data["flight_id"] = row["flight_id"]
-            extracted_data["action_name"] = row["action_name"]
-
-            data[row["id"]] = extracted_data
-
-        data_df = pd.DataFrame.from_dict(data, orient="index")
-        data_df.reset_index(inplace=True)
-        data_df.rename(columns={"index": "id"}, inplace=True)
-
-        first_columns = ["flight_id", "id", "action_name"]
-        following_columns = [col for col in data_df.columns if col not in first_columns]
-
-        data_df = data_df[first_columns + following_columns]
-        data_df = self.df_cleaner.remove_column_anonymization(
-            data_df, COLUMNS_CalculateWeightAndTrimAction
-        )
-        data_df.to_csv(PATH, index=False)
-
-        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
-        return df
-
-    def __process_UpdateFlightAction(
-        self, df: pd.DataFrame, prefix: str
-    ) -> pd.DataFrame:
-        NAME = "UpdateFlightAction"
-
-        for header_category in ["received", "saved"]:
-            PATH = self.DATA_DIR / f"{prefix}_{NAME}_{header_category}.csv"
-
-            filtered = df[
-                (df["action_name"] == NAME) & (df["header_category"] == header_category)
-            ]
-
-            data = {}
-            for _, row in filtered.iterrows():
-                raw_data = row["entry_details"]
-                extracted_data = self.regex_extractor.extract_UpdateFlightAction(
-                    raw_data, header_category
-                )
-                extracted_data["flight_id"] = row["flight_id"]
-                extracted_data["action_name"] = row["action_name"]
-
-                data[row["id"]] = extracted_data
-
-            data_df = pd.DataFrame.from_dict(data, orient="index")
-            data_df.reset_index(inplace=True)
-            data_df.rename(columns={"index": "id"}, inplace=True)
-
-            first_columns = ["flight_id", "id", "action_name"]
-            following_columns = [
-                col for col in data_df.columns if col not in first_columns
-            ]
-
-            data_df = data_df[first_columns + following_columns]
+        if column_anonymization:
             data_df = self.df_cleaner.remove_column_anonymization(
-                data_df, COLUMNS_CalculateWeightAndTrimAction
+                data_df, column_anonymization
             )
-            data_df.to_csv(PATH, index=False)
-
-            df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
-
-        return df
-
-    def __process_UpdateCrewDataAction(
-        self, df: pd.DataFrame, prefix: str
-    ) -> pd.DataFrame:
-        NAME = "UpdateCrewDataAction"
-        PATH = self.DATA_DIR / f"{prefix}_{NAME}.csv"
-
-        filtered = df[
-            (df["action_name"] == NAME) & (df["header_category"] == "received")
-        ]
-
-        data = {}
-        for _, row in filtered.iterrows():
-            raw_data = row["entry_details"]
-            extracted_data = self.regex_extractor.extract_UpdateCrewDataAction(raw_data)
-            extracted_data["flight_id"] = row["flight_id"]
-            extracted_data["action_name"] = row["action_name"]
-
-            data[row["id"]] = extracted_data
-
-        data_df = pd.DataFrame.from_dict(data, orient="index")
-        data_df.reset_index(inplace=True)
-        data_df.rename(columns={"index": "id"}, inplace=True)
-
-        first_columns = ["flight_id", "id", "action_name"]
-        following_columns = [col for col in data_df.columns if col not in first_columns]
-
-        data_df = data_df[first_columns + following_columns]
-        data_df = self.df_cleaner.remove_column_anonymization(
-            data_df, COLUMNS_CalculateWeightAndTrimAction
-        )
-        data_df.to_csv(PATH, index=False)
-
-        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
-        return df
-
-    def __process_StoreRegistrationAndConfigurationAc(
-        self, df: pd.DataFrame, prefix: str
-    ) -> pd.DataFrame:
-        NAME = "StoreRegistrationAndConfigurationAc"
-        PATH = self.DATA_DIR / f"{prefix}_{NAME}.csv"
-
-        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
-
-        data = {}
-        for _, row in filtered.iterrows():
-            raw_data = row["entry_details"]
-            extracted_data = (
-                self.regex_extractor.extract_StoreRegistrationAndConfigurationAc(
-                    raw_data
-                )
-            )
-            extracted_data["flight_id"] = row["flight_id"]
-            extracted_data["action_name"] = row["action_name"]
-
-            data[row["id"]] = extracted_data
-
-        data_df = pd.DataFrame.from_dict(data, orient="index")
-        data_df.reset_index(inplace=True)
-        data_df.rename(columns={"index": "id"}, inplace=True)
-
-        first_columns = ["flight_id", "id", "action_name"]
-        following_columns = [col for col in data_df.columns if col not in first_columns]
-
-        data_df = data_df[first_columns + following_columns]
-        data_df = self.df_cleaner.remove_column_anonymization(
-            data_df, COLUMNS_CalculateWeightAndTrimAction
-        )
-        data_df.to_csv(PATH, index=False)
-
-        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
-        return df
-
-    def __process_UpdateLoadTableAction(
-        self, df: pd.DataFrame, prefix: str
-    ) -> pd.DataFrame:
-        NAME = "UpdateLoadTableAction"
-        PATH = self.DATA_DIR / f"{prefix}_{NAME}.csv"
-
-        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
-
-        data = {}
-        for _, row in filtered.iterrows():
-            raw_data = row["entry_details"]
-            extracted_data = self.regex_extractor.extract_UpdateLoadTableAction(
-                raw_data
-            )
-            extracted_data["flight_id"] = row["flight_id"]
-            extracted_data["action_name"] = row["action_name"]
-
-            data[row["id"]] = extracted_data
-
-        data_df = pd.DataFrame.from_dict(data, orient="index")
-        data_df.reset_index(inplace=True)
-        data_df.rename(columns={"index": "id"}, inplace=True)
-
-        first_columns = ["flight_id", "id", "action_name"]
-        following_columns = [col for col in data_df.columns if col not in first_columns]
-
-        data_df = data_df[first_columns + following_columns]
-        data_df = self.df_cleaner.remove_column_anonymization(
-            data_df, COLUMNS_CalculateWeightAndTrimAction
-        )
-        data_df.to_csv(PATH, index=False)
-
-        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
-        return df
-
-    def __process_StorePaxDataAction_saved(
-        self, df: pd.DataFrame, prefix: str
-    ) -> pd.DataFrame:
-        NAME = "StorePaxDataAction"
-        PATH = self.DATA_DIR / f"{prefix}_{NAME}_saved.csv"
-
-        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
-
-        data = {}
-        for _, row in filtered.iterrows():
-            raw_data = row["entry_details"]
-            extracted_data = self.regex_extractor.extract_StorePaxDataAction_saved(
-                raw_data
-            )
-            extracted_data["flight_id"] = row["flight_id"]
-            extracted_data["action_name"] = row["action_name"]
-
-            data[row["id"]] = extracted_data
-
-        data_df = pd.DataFrame.from_dict(data, orient="index")
-        data_df.reset_index(inplace=True)
-        data_df.rename(columns={"index": "id"}, inplace=True)
-
-        first_columns = ["flight_id", "id", "action_name"]
-        following_columns = [col for col in data_df.columns if col not in first_columns]
-
-        data_df = data_df[first_columns + following_columns]
-        data_df = self.df_cleaner.remove_column_anonymization(
-            data_df, COLUMNS_CalculateWeightAndTrimAction
-        )
-        data_df.to_csv(PATH, index=False)
-
-        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
-        return df
-
-    def __process_StorePaxDataAction_received(
-        self, df: pd.DataFrame, prefix: str
-    ) -> pd.DataFrame:
-        NAME = "StorePaxDataAction"
-        PATH = self.DATA_DIR / f"{prefix}_{NAME}_saved.csv"
-
-        filtered = df[
-            (df["action_name"] == NAME) & (df["header_category"] == "received")
-        ]
-
-        data = {}
-        for _, row in filtered.iterrows():
-            raw_data = row["entry_details"]
-            extracted_data = self.regex_extractor.extract_StorePaxDataAction_received(
-                raw_data
-            )
-            extracted_data["flight_id"] = row["flight_id"]
-            extracted_data["action_name"] = row["action_name"]
-
-            data[row["id"]] = extracted_data
-
-        data_df = pd.DataFrame.from_dict(data, orient="index")
-        data_df.reset_index(inplace=True)
-        data_df.rename(columns={"index": "id"}, inplace=True)
-
-        first_columns = ["flight_id", "id", "action_name"]
-        following_columns = [col for col in data_df.columns if col not in first_columns]
-
-        data_df = data_df[first_columns + following_columns]
-        data_df = self.df_cleaner.remove_column_anonymization(
-            data_df, COLUMNS_CalculateWeightAndTrimAction
-        )
-        data_df.to_csv(PATH, index=False)
-
-        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
-        return df
-
-    def __process_FuelDataInitializer(
-        self, df: pd.DataFrame, prefix: str
-    ) -> pd.DataFrame:
-        NAME = "FuelDataInitializer"
-        PATH = self.DATA_DIR / f"{prefix}_{NAME}.csv"
-
-        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
-
-        data = {}
-        for _, row in filtered.iterrows():
-            raw_data = row["entry_details"]
-            extracted_data = self.regex_extractor.extract_FuelDataInitializer(raw_data)
-            extracted_data["flight_id"] = row["flight_id"]
-            extracted_data["action_name"] = row["action_name"]
-
-            data[row["id"]] = extracted_data
-
-        data_df = pd.DataFrame.from_dict(data, orient="index")
-        data_df.reset_index(inplace=True)
-        data_df.rename(columns={"index": "id"}, inplace=True)
-
-        first_columns = ["flight_id", "id", "action_name"]
-        following_columns = [col for col in data_df.columns if col not in first_columns]
-
-        data_df = data_df[first_columns + following_columns]
-        data_df = self.df_cleaner.remove_column_anonymization(
-            data_df, COLUMNS_CalculateWeightAndTrimAction
-        )
-        data_df.to_csv(PATH, index=False)
-
-        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
-        return df
-
-    def __process_UpdateFuelDataAction_saved(
-        self, df: pd.DataFrame, prefix: str
-    ) -> pd.DataFrame:
-        NAME = "UpdateFuelDataAction"
-        PATH = self.DATA_DIR / f"{prefix}_{NAME}_saved.csv"
-
-        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
-
-        data = {}
-        for _, row in filtered.iterrows():
-            raw_data = row["entry_details"]
-            extracted_data = self.regex_extractor.extract_UpdateFuelDataAction_saved(
-                raw_data
-            )
-            extracted_data["flight_id"] = row["flight_id"]
-            extracted_data["action_name"] = row["action_name"]
-
-            data[row["id"]] = extracted_data
-
-        data_df = pd.DataFrame.from_dict(data, orient="index")
-        data_df.reset_index(inplace=True)
-        data_df.rename(columns={"index": "id"}, inplace=True)
-
-        first_columns = ["flight_id", "id", "action_name"]
-        following_columns = [col for col in data_df.columns if col not in first_columns]
-
-        data_df = data_df[first_columns + following_columns]
-        data_df = self.df_cleaner.remove_column_anonymization(
-            data_df, COLUMNS_CalculateWeightAndTrimAction
-        )
-        data_df.to_csv(PATH, index=False)
-
-        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
-        return df
-
-    def __process_UpdateFuelDataAction_received(
-        self, df: pd.DataFrame, prefix: str
-    ) -> pd.DataFrame:
-        NAME = "UpdateFuelDataAction"
-        PATH = self.DATA_DIR / f"{prefix}_{NAME}_received.csv"
-
-        filtered = df[
-            (df["action_name"] == NAME) & (df["header_category"] == "received")
-        ]
-
-        data = {}
-        for _, row in filtered.iterrows():
-            raw_data = row["entry_details"]
-            extracted_data = self.regex_extractor.extract_UpdateFuelDataAction_received(
-                raw_data
-            )
-            extracted_data["flight_id"] = row["flight_id"]
-            extracted_data["action_name"] = row["action_name"]
-
-            data[row["id"]] = extracted_data
-
-        data_df = pd.DataFrame.from_dict(data, orient="index")
-        data_df.reset_index(inplace=True)
-        data_df.rename(columns={"index": "id"}, inplace=True)
-
-        first_columns = ["flight_id", "id", "action_name"]
-        following_columns = [col for col in data_df.columns if col not in first_columns]
-
-        data_df = data_df[first_columns + following_columns]
-        data_df = self.df_cleaner.remove_column_anonymization(
-            data_df, COLUMNS_CalculateWeightAndTrimAction
-        )
         data_df.to_csv(PATH, index=False)
 
         df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH

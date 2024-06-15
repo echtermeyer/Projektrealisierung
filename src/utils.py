@@ -219,6 +219,12 @@ COLUMNS_FuelDataInitializer_STATUS_KEYS = [
 
 COLUMNS_FuelDataInitializer = ["trip", "taxi", "takeoff", "ballast", "edno"]
 
+COLUMNS_UpdateFuelDataAction_ANONYMIZATION = {
+    "BAG_LOAD_ITEMS_GEN": "BAG_LOZY_ITEMS_GEN",
+    "LOADSHEET": "LOZYSHEET",
+    "LOADING_INSTRUCTION": "LOZYING_INSTRUCTION",
+}
+
 COLUMNS_UpdateFuelDataAction_STATUS_KEYS = [
     "AIRBORNE",
     "AIRCRAFT_CONFIG",
