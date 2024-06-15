@@ -197,6 +197,102 @@ COLUMNS_StorePaxDataAction_STATUS_KEYS_saved = [
     "UCM",
 ]
 
+COLUMNS_FuelDataInitializer_STATUS_KEYS = [
+    "AB",
+    "AC",
+    "Am",
+    "As",
+    "BI",
+    "CC",
+    "CF",
+    "CKo",
+    "CT",
+    "EZ",
+    "Ec",
+    "FR",
+    "HD",
+    "OB",
+    "R",
+    "RC",
+    "RF",
+]
+
+COLUMNS_FuelDataInitializer = ["trip", "taxi", "takeoff", "ballast", "edno"]
+
+COLUMNS_UpdateFuelDataAction_STATUS_KEYS = [
+    "AIRBORNE",
+    "AIRCRAFT_CONFIG",
+    "ALLOWANCE_CHECK_PERFORMED",
+    "AUTOMATION_STARTED",
+    "AUTO_MODE_ACTIVE",
+    "BAG_LOAD_ITEMS_GEN",
+    # "BAG_LOZY_ITEMS_GEN",
+    "BAG_ULD_ORD",
+    "CABIN_CONFIG",
+    "CALC_HIST_DATA",
+    "CARGO_FINAL",
+    "CARGO_TRANSFER",
+    "CHECK_IN_FINAL",
+    "DGR_ITEMS",
+    "EZFW",
+    "EZFW_COUNTER",
+    "FINAL_RELEASE",
+    "FUEL",
+    "FUEL_ORDER",
+    "LOADING_INSTRUCTION",
+    "LOADSHEET",
+    # "LOZYING_INSTRUCTION",
+    # "LOZYSHEET",
+    "OFFBLOCK",
+    "OFP",
+    "RAMP_FINAL",
+    "REGISTRATION",
+    "REGISTRATION_CHANGE",
+    "TRANSIT_ACCEPTANCE",
+    "TRANSIT_PAX",
+]
+
+COLUMNS_UpdateFuelDataAction_FUEL_KEYS = [
+    "CT",
+    "LI",
+    "LM",
+    "LO",
+    "M1",
+    "RI",
+    "RM",
+    "RO",
+    "TRIM",
+    "ballast",
+    "edno",
+    "takeoff",
+    "taxi",
+    "trip",
+]
+
+COLUMNS_UpdateFuelDataAction_MW_KEYS = ["mzfw", "mtxw", "mtow", "mlaw"]
+
+COLUMNS_UpdateFuelDataAction_received = [
+    "StandardFuel",
+    "Non standard fuel",
+    "EditionNumber",
+    "Fueling Indicator",
+    "TruckOnSbyIndicator",
+    "Manual Non Standard Index",
+    "Actual OFP No",
+    "Density",
+    "Trip Fuel",
+    "FZFW",
+    "Max Fuel Cap",
+    "EZFW sent",
+    "Minimum TOF",
+    "Triggerd by",
+    "Take Off Fuel",
+    "Taxi Fuel",
+    "Planning Fuel",
+    "Flight Time",
+    "Remarks",
+]
+
 airport_coords = {
     "BLR": [12.972442, 77.580643],  # Bangalore, India
     "BOM": [19.089560, 72.865614],  # Mumbai, India

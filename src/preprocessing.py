@@ -22,6 +22,12 @@ from src.utils import (
     COLUMNS_UpdateLoadTableAction_STATUS_KEYS,
     COLUMNS_StorePaxDataAction_saved,
     COLUMNS_StorePaxDataAction_STATUS_KEYS_saved,
+    COLUMNS_FuelDataInitializer,
+    COLUMNS_FuelDataInitializer_STATUS_KEYS,
+    COLUMNS_UpdateFuelDataAction_STATUS_KEYS,
+    COLUMNS_UpdateFuelDataAction_MW_KEYS,
+    COLUMNS_UpdateFuelDataAction_FUEL_KEYS,
+    COLUMNS_UpdateFuelDataAction_received,
 )
 
 
@@ -255,14 +261,122 @@ class Regex_Extractor:
 
         values = {key: parse_value(val) for key, val in zip(headers, pax_values)}
 
-        data = {
+        config_data = {
             "Baggage weight type": baggage_weight_type,
             "Distribution": distribution,
             "Pax type": pax_type,
         }
-        data.update(values)
+        config_data.update(values)
 
-        return data
+        return config_data
+
+    @staticmethod
+    def extract_FuelDataInitializer(input_text: str):
+        status_data = {}
+        fuel_data = {}
+
+        lines = input_text.strip().split("\n")
+
+        status_line = lines[0]
+        status_parts = status_line.split()
+        for idx, part in enumerate(status_parts):
+            if part in COLUMNS_FuelDataInitializer_STATUS_KEYS:
+                status_data[f"STATUS_{part}"] = int(status_parts[idx + 1])
+
+        fuel_line = next((line for line in lines if line.startswith("FUEL")), None)
+        if fuel_line:
+            fuel_parts = fuel_line.split()
+            for part in fuel_parts:
+                key_value = part.split("=")
+                if len(key_value) == 2:
+                    key, value = key_value
+                    if value == "null":
+                        fuel_data[f"FUEL_{key}"] = None
+                    else:
+                        fuel_data[f"FUEL_{key}"] = float(value)
+        else:
+            for key in COLUMNS_FuelDataInitializer:
+                fuel_data[f"FUEL_{key}"] = None
+
+        config_data = {**status_data, **fuel_data}
+        return config_data
+
+    @staticmethod
+    def extract_UpdateFuelDataAction_saved(input_text: str):
+        lines = input_text.split("\n")
+
+        mw_line = next((line for line in lines if line.strip().startswith("MW")), None)
+        mw_data = {key: None for key in COLUMNS_UpdateFuelDataAction_MW_KEYS}
+        if mw_line:
+            pairs = mw_line.split()
+            for pair in pairs[1:]:
+                if "=" in pair:
+                    key, value = pair.split("=")
+                    if "KG" in value:
+                        value = float(value.replace("KG", ""))
+                    else:
+                        value = float(value)
+                    mw_data[key] = value
+
+        fuel_line = next(
+            (line for line in lines if line.strip().startswith("FUEL")), None
+        )
+        fuel_data = {key: None for key in COLUMNS_UpdateFuelDataAction_FUEL_KEYS}
+        if fuel_line:
+            pairs = fuel_line.split()
+            for pair in pairs[1:]:
+                if "=" in pair:
+                    key, value = pair.split("=")
+                    if value == "null":
+                        fuel_data[key] = None
+                    elif "KG" in value:
+                        fuel_data[key] = float(value.replace("KG", ""))
+                    else:
+                        fuel_data[key] = float(value)
+
+        status_line = next(
+            (line for line in lines if line.strip().startswith("STATUS")), None
+        )
+        status_data = {
+            f"STATUS_{key}": None for key in COLUMNS_UpdateFuelDataAction_STATUS_KEYS
+        }
+        if status_line:
+            parts = status_line.split()
+            for idx, part in enumerate(parts):
+                if part in COLUMNS_UpdateFuelDataAction_STATUS_KEYS:
+                    status_data[f"STATUS_{part}"] = int(parts[idx + 1])
+
+        config_data = {**mw_data, **fuel_data, **status_data}
+        return config_data
+
+    @staticmethod
+    def extract_UpdateFuelDataAction_received(input_text: str):
+        extracted_dict = {}
+        for i in range(len(COLUMNS_UpdateFuelDataAction_received)):
+            current_key = COLUMNS_UpdateFuelDataAction_received[i]
+            if i + 1 < len(COLUMNS_UpdateFuelDataAction_received):
+                next_key = COLUMNS_UpdateFuelDataAction_received[i + 1]
+                pattern = rf"{current_key}\s*:\s*([^:]*)(?=\s*{next_key}\s*:)"
+            else:
+                pattern = rf"{current_key}\s*:\s*(.*)"
+
+            match = re.search(pattern, input_text, re.DOTALL)
+            if match:
+                value = match.group(1).strip()
+                if "KG" in value:
+                    value = re.sub(r" KGPERCUBICMETER| KG", "", value).strip()
+                if value.isdigit() or value.replace(".", "", 1).isdigit():
+                    extracted_dict[current_key] = float(value)
+                elif value.lower() == "null":
+                    extracted_dict[current_key] = None
+                elif value.lower() in ["true", "false"]:
+                    extracted_dict[current_key] = value.lower() == "true"
+                else:
+                    extracted_dict[current_key] = value
+            else:
+                extracted_dict[current_key] = None
+
+        return extracted_dict
 
     @staticmethod
     def extract_header_id(log_entry):
@@ -375,6 +489,13 @@ class Preprocessor:
         print("-- Processing StorePaxDataAction...")
         df = self.__process_StorePaxDataAction_saved(df, prefix)
         df = self.__process_StorePaxDataAction_received(df, prefix)
+
+        print("-- Processing FuelDataInitializer...")
+        df = self.__process_FuelDataInitializer(df, prefix)
+
+        print("-- Processing UpdateFuelDataAction...")
+        df = self.__process_UpdateFuelDataAction_saved(df, prefix)
+        df = self.__process_UpdateFuelDataAction_received(df, prefix)
 
         return df
 
@@ -674,6 +795,111 @@ class Preprocessor:
         for _, row in filtered.iterrows():
             raw_data = row["entry_details"]
             extracted_data = self.regex_extractor.extract_StorePaxDataAction_received(
+                raw_data
+            )
+            extracted_data["flight_id"] = row["flight_id"]
+            extracted_data["action_name"] = row["action_name"]
+
+            data[row["id"]] = extracted_data
+
+        data_df = pd.DataFrame.from_dict(data, orient="index")
+        data_df.reset_index(inplace=True)
+        data_df.rename(columns={"index": "id"}, inplace=True)
+
+        first_columns = ["flight_id", "id", "action_name"]
+        following_columns = [col for col in data_df.columns if col not in first_columns]
+
+        data_df = data_df[first_columns + following_columns]
+        data_df = self.df_cleaner.remove_column_anonymization(
+            data_df, COLUMNS_CalculateWeightAndTrimAction
+        )
+        data_df.to_csv(PATH, index=False)
+
+        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
+        return df
+
+    def __process_FuelDataInitializer(
+        self, df: pd.DataFrame, prefix: str
+    ) -> pd.DataFrame:
+        NAME = "FuelDataInitializer"
+        PATH = self.DATA_DIR / f"{prefix}_{NAME}.csv"
+
+        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
+
+        data = {}
+        for _, row in filtered.iterrows():
+            raw_data = row["entry_details"]
+            extracted_data = self.regex_extractor.extract_FuelDataInitializer(raw_data)
+            extracted_data["flight_id"] = row["flight_id"]
+            extracted_data["action_name"] = row["action_name"]
+
+            data[row["id"]] = extracted_data
+
+        data_df = pd.DataFrame.from_dict(data, orient="index")
+        data_df.reset_index(inplace=True)
+        data_df.rename(columns={"index": "id"}, inplace=True)
+
+        first_columns = ["flight_id", "id", "action_name"]
+        following_columns = [col for col in data_df.columns if col not in first_columns]
+
+        data_df = data_df[first_columns + following_columns]
+        data_df = self.df_cleaner.remove_column_anonymization(
+            data_df, COLUMNS_CalculateWeightAndTrimAction
+        )
+        data_df.to_csv(PATH, index=False)
+
+        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
+        return df
+
+    def __process_UpdateFuelDataAction_saved(
+        self, df: pd.DataFrame, prefix: str
+    ) -> pd.DataFrame:
+        NAME = "UpdateFuelDataAction"
+        PATH = self.DATA_DIR / f"{prefix}_{NAME}_saved.csv"
+
+        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
+
+        data = {}
+        for _, row in filtered.iterrows():
+            raw_data = row["entry_details"]
+            extracted_data = self.regex_extractor.extract_UpdateFuelDataAction_saved(
+                raw_data
+            )
+            extracted_data["flight_id"] = row["flight_id"]
+            extracted_data["action_name"] = row["action_name"]
+
+            data[row["id"]] = extracted_data
+
+        data_df = pd.DataFrame.from_dict(data, orient="index")
+        data_df.reset_index(inplace=True)
+        data_df.rename(columns={"index": "id"}, inplace=True)
+
+        first_columns = ["flight_id", "id", "action_name"]
+        following_columns = [col for col in data_df.columns if col not in first_columns]
+
+        data_df = data_df[first_columns + following_columns]
+        data_df = self.df_cleaner.remove_column_anonymization(
+            data_df, COLUMNS_CalculateWeightAndTrimAction
+        )
+        data_df.to_csv(PATH, index=False)
+
+        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
+        return df
+
+    def __process_UpdateFuelDataAction_received(
+        self, df: pd.DataFrame, prefix: str
+    ) -> pd.DataFrame:
+        NAME = "UpdateFuelDataAction"
+        PATH = self.DATA_DIR / f"{prefix}_{NAME}_received.csv"
+
+        filtered = df[
+            (df["action_name"] == NAME) & (df["header_category"] == "received")
+        ]
+
+        data = {}
+        for _, row in filtered.iterrows():
+            raw_data = row["entry_details"]
+            extracted_data = self.regex_extractor.extract_UpdateFuelDataAction_received(
                 raw_data
             )
             extracted_data["flight_id"] = row["flight_id"]
