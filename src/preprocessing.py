@@ -18,6 +18,8 @@ from src.utils import (
     COLUMNS_UpdateCrewDataAction,
     COLUMNS_StoreRegistrationAndConfigurationAc,
     COLUMNS_StoreRegistrationAndConfigurationAc_STATUS_KEYS,
+    COLUMNS_UpdateLoadTableAction,
+    COLUMNS_UpdateLoadTableAction_STATUS_KEYS,
 )
 
 
@@ -138,6 +140,35 @@ class Regex_Extractor:
         return extracted_dict
 
     @staticmethod
+    def extract_UpdateLoadTableAction(entry_string: str):
+        extracted_dict = {}
+
+        for key in COLUMNS_UpdateLoadTableAction:
+            pattern = rf"{re.escape(key)}\s*:\s*([\d.]+)"
+            match = re.search(pattern, entry_string)
+            if match:
+                extracted_dict[f"ESTIMATED_{key.replace(' ', '_')}"] = float(
+                    match.group(1)
+                )
+
+        status_data = {}
+        status_key_pattern = re.compile(r"STATUS\s+(.*)")
+        status_part = status_key_pattern.search(entry_string)
+        if status_part:
+            statuses = status_part.group(1).split()
+            for i in range(0, len(statuses), 2):
+                key = "STATUS_" + statuses[i]
+                status_data[key] = int(statuses[i + 1])
+
+        for key in COLUMNS_UpdateLoadTableAction_STATUS_KEYS:
+            prefixed_key = "STATUS_" + key
+            if prefixed_key not in status_data:
+                status_data[prefixed_key] = None
+
+        extracted_dict.update(status_data)
+        return extracted_dict
+
+    @staticmethod
     def extract_header_id(log_entry):
         pattern = re.compile(r"\[([a-f0-9]+)\]")
         match = pattern.search(log_entry)
@@ -241,6 +272,9 @@ class Preprocessor:
 
         print("-- Processing StoreRegistrationAndConfigurationAc...")
         df = self.__process_StoreRegistrationAndConfigurationAc(df, prefix)
+
+        print("-- Processing UpdateLoadTableAction...")
+        df = self.__process_UpdateLoadTableAction(df, prefix)
 
         return df
 
@@ -434,6 +468,41 @@ class Preprocessor:
                 self.regex_extractor.extract_StoreRegistrationAndConfigurationAc(
                     raw_data
                 )
+            )
+            extracted_data["flight_id"] = row["flight_id"]
+            extracted_data["action_name"] = row["action_name"]
+
+            data[row["id"]] = extracted_data
+
+        data_df = pd.DataFrame.from_dict(data, orient="index")
+        data_df.reset_index(inplace=True)
+        data_df.rename(columns={"index": "id"}, inplace=True)
+
+        first_columns = ["flight_id", "id", "action_name"]
+        following_columns = [col for col in data_df.columns if col not in first_columns]
+
+        data_df = data_df[first_columns + following_columns]
+        data_df = self.df_cleaner.remove_column_anonymization(
+            data_df, COLUMNS_CalculateWeightAndTrimAction
+        )
+        data_df.to_csv(PATH, index=False)
+
+        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
+        return df
+
+    def __process_UpdateLoadTableAction(
+        self, df: pd.DataFrame, prefix: str
+    ) -> pd.DataFrame:
+        NAME = "UpdateLoadTableAction"
+        PATH = self.DATA_DIR / f"{prefix}_{NAME}.csv"
+
+        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
+
+        data = {}
+        for _, row in filtered.iterrows():
+            raw_data = row["entry_details"]
+            extracted_data = self.regex_extractor.extract_UpdateLoadTableAction(
+                raw_data
             )
             extracted_data["flight_id"] = row["flight_id"]
             extracted_data["action_name"] = row["action_name"]

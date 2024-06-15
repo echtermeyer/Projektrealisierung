@@ -105,6 +105,47 @@ COLUMNS_StoreRegistrationAndConfigurationAc_STATUS_KEYS = [
     "REGISTRATION_CHANGE",
 ]
 
+COLUMNS_UpdateLoadTableAction = [
+    "Total baggage",
+    "Total cargo",
+    "Total EIC",
+    "Total mail",
+]
+
+COLUMNS_UpdateLoadTableAction_STATUS_KEYS = [
+    "AIRBORNE",
+    "AIRCRAFT_CONFIG",
+    "ALLOWANCE_CHECK_PERFORMED",
+    "AUTOMATION_STARTED",
+    "AUTO_MODE_ACTIVE",
+    "BAG_LOAD_ITEMS_GEN",
+    "BAG_LOZY_ITEMS_GEN",
+    "BAG_ULD_ORD",
+    "CABIN_CONFIG",
+    "CALC_HIST_DATA",
+    "CARGO_FINAL",
+    "CARGO_TRANSFER",
+    "CHECK_IN_FINAL",
+    "CHECK_IN_OPEN",
+    "DGR_ITEMS",
+    "EZFW",
+    "EZFW_COUNTER",
+    "FUEL",
+    "FUEL_ORDER",
+    "LDM",
+    "LOADING_INSTRUCTION",
+    "LOADSHEET",
+    "LOZYING_INSTRUCTION",
+    "LOZYSHEET",
+    "OFFBLOCK",
+    "OFP",
+    "PDM",
+    "REGISTRATION",
+    "REGISTRATION_CHANGE",
+    "TRANSIT_ACCEPTANCE",
+    "TRANSIT_PAX",
+]
+
 airport_coords = {
     "BLR": [12.972442, 77.580643],  # Bangalore, India
     "BOM": [19.089560, 72.865614],  # Mumbai, India
