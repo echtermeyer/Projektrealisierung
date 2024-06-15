@@ -146,6 +146,57 @@ COLUMNS_UpdateLoadTableAction_STATUS_KEYS = [
     "TRANSIT_PAX",
 ]
 
+COLUMNS_StorePaxDataAction_saved = [
+    "TOTAL Pax",
+    "Y",
+    "Jump",
+    "StandBy",
+    "Male",
+    "Female",
+    "Child",
+    "Infant",
+    "Total bag",
+    "Total bag weight",
+    "Baggage weight type",
+]
+
+COLUMNS_StorePaxDataAction_STATUS_KEYS_saved = [
+    "AIRBORNE",
+    "AIRCRAFT_CONFIG",
+    "ALLOWANCE_CHECK_PERFORMED",
+    "AUTOMATION_STARTED",
+    "AUTO_MODE_ACTIVE",
+    "BAG_LOAD_ITEMS_GEN",
+    "BAG_LOZY_ITEMS_GEN",
+    "BAG_ULD_ORD",
+    "CABIN_CONFIG",
+    "CALC_HIST_DATA",
+    "CARGO_FINAL",
+    "CARGO_TRANSFER",
+    "CHECK_IN_FINAL",
+    "CHECK_IN_OPEN",
+    "CPM",
+    "DGR_ITEMS",
+    "EZFW",
+    "EZFW_COUNTER",
+    "FINAL_RELEASE",
+    "FUEL",
+    "FUEL_ORDER",
+    "FUEL_STATUS_FINAL",
+    "LDM",
+    "LOADING_INSTRUCTION",
+    "LOADSHEET",
+    "OFFBLOCK",
+    "OFP",
+    "PDM",
+    "RAMP_FINAL",
+    "REGISTRATION",
+    "REGISTRATION_CHANGE",
+    "TRANSIT_ACCEPTANCE",
+    "TRANSIT_PAX",
+    "UCM",
+]
+
 airport_coords = {
     "BLR": [12.972442, 77.580643],  # Bangalore, India
     "BOM": [19.089560, 72.865614],  # Mumbai, India

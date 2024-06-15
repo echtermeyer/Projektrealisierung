@@ -20,6 +20,8 @@ from src.utils import (
     COLUMNS_StoreRegistrationAndConfigurationAc_STATUS_KEYS,
     COLUMNS_UpdateLoadTableAction,
     COLUMNS_UpdateLoadTableAction_STATUS_KEYS,
+    COLUMNS_StorePaxDataAction_saved,
+    COLUMNS_StorePaxDataAction_STATUS_KEYS_saved,
 )
 
 
@@ -169,6 +171,100 @@ class Regex_Extractor:
         return extracted_dict
 
     @staticmethod
+    def extract_StorePaxDataAction_saved(entry_string: str):
+        config_data = {}
+
+        for key in COLUMNS_StorePaxDataAction_saved:
+            if key in ["Total bag weight"]:  # Extracting numeric values with units
+                pattern = rf"{re.escape(key)}\s*:\s*([\d.]+)\s*KG"  # Extracting just the number before "KG"
+            elif key in [
+                "Baggage weight type"
+            ]:  # Extracting strings that could include spaces or special characters
+                pattern = rf"{re.escape(key)}\s*:\s*([a-zA-Z_]+)"  # Adjusted to capture proper string formats
+            else:
+                pattern = rf"{re.escape(key)}\s*:\s*([\d]+|NULL)"  # For numeric or NULL values
+
+            match = re.search(pattern, entry_string)
+            if match:
+                value = match.group(1)
+                if value.isdigit():
+                    config_data[key] = int(value)
+                elif value == "NULL":
+                    config_data[key] = None
+                else:
+                    try:
+                        config_data[key] = float(value)
+                    except ValueError:
+                        config_data[key] = value
+
+        distribution_match = re.search(r"Distribution\s*:\s*([a-zA-Z_]+)", entry_string)
+        if distribution_match:
+            config_data["Distribution"] = distribution_match.group(1)
+
+        status_data = {}
+        status_key_pattern = re.compile(r"STATUS\s+(.*)")
+        status_part = status_key_pattern.search(entry_string)
+        if status_part:
+            statuses = status_part.group(1).split()
+            for i in range(0, len(statuses), 2):
+                key = "STATUS_" + statuses[i]
+                status_data[key] = int(statuses[i + 1])
+
+        for key in COLUMNS_StorePaxDataAction_STATUS_KEYS_saved:
+            prefixed_key = "STATUS_" + key
+            if prefixed_key not in status_data:
+                status_data[prefixed_key] = None
+
+        config_data.update(status_data)
+        return config_data
+
+    @staticmethod
+    def extract_StorePaxDataAction_received(input_text: str):
+        baggage_weight_type_pattern = r"Baggage weight type:\s*(\S+)"
+        distribution_pattern = r"Distribution\s*:\s*(\S+)"
+
+        baggage_weight_type = re.search(baggage_weight_type_pattern, input_text).group(
+            1
+        )
+        distribution = re.search(distribution_pattern, input_text).group(1)
+
+        def extract_labels(input_text):
+            pattern = r"(\S+)\s{2,}"
+            for line in input_text.split("\n"):
+                if re.search(pattern, line):
+                    labels = re.findall(pattern, line)
+                    if len(labels) > 5:
+                        return labels
+
+        headers = extract_labels(input_text)
+
+        pax_type_pattern = r"(Checkin|Loadsheet)\s+(.*)"
+        pax_type_search = re.search(pax_type_pattern, input_text)
+        pax_type = pax_type_search.group(1)
+        pax_values_line = pax_type_search.group(2)
+        pax_values_line = re.sub(r"\s+KG", "KG", pax_values_line)
+        pax_values = pax_values_line.split()
+
+        def parse_value(value):
+            if value == "NULL":
+                return None
+            value = value.replace("KG", "").strip()
+            if value == "":
+                return None
+            return float(value)
+
+        values = {key: parse_value(val) for key, val in zip(headers, pax_values)}
+
+        data = {
+            "Baggage weight type": baggage_weight_type,
+            "Distribution": distribution,
+            "Pax type": pax_type,
+        }
+        data.update(values)
+
+        return data
+
+    @staticmethod
     def extract_header_id(log_entry):
         pattern = re.compile(r"\[([a-f0-9]+)\]")
         match = pattern.search(log_entry)
@@ -275,6 +371,10 @@ class Preprocessor:
 
         print("-- Processing UpdateLoadTableAction...")
         df = self.__process_UpdateLoadTableAction(df, prefix)
+
+        print("-- Processing StorePaxDataAction...")
+        df = self.__process_StorePaxDataAction_saved(df, prefix)
+        df = self.__process_StorePaxDataAction_received(df, prefix)
 
         return df
 
@@ -502,6 +602,78 @@ class Preprocessor:
         for _, row in filtered.iterrows():
             raw_data = row["entry_details"]
             extracted_data = self.regex_extractor.extract_UpdateLoadTableAction(
+                raw_data
+            )
+            extracted_data["flight_id"] = row["flight_id"]
+            extracted_data["action_name"] = row["action_name"]
+
+            data[row["id"]] = extracted_data
+
+        data_df = pd.DataFrame.from_dict(data, orient="index")
+        data_df.reset_index(inplace=True)
+        data_df.rename(columns={"index": "id"}, inplace=True)
+
+        first_columns = ["flight_id", "id", "action_name"]
+        following_columns = [col for col in data_df.columns if col not in first_columns]
+
+        data_df = data_df[first_columns + following_columns]
+        data_df = self.df_cleaner.remove_column_anonymization(
+            data_df, COLUMNS_CalculateWeightAndTrimAction
+        )
+        data_df.to_csv(PATH, index=False)
+
+        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
+        return df
+
+    def __process_StorePaxDataAction_saved(
+        self, df: pd.DataFrame, prefix: str
+    ) -> pd.DataFrame:
+        NAME = "StorePaxDataAction"
+        PATH = self.DATA_DIR / f"{prefix}_{NAME}_saved.csv"
+
+        filtered = df[(df["action_name"] == NAME) & (df["header_category"] == "saved")]
+
+        data = {}
+        for _, row in filtered.iterrows():
+            raw_data = row["entry_details"]
+            extracted_data = self.regex_extractor.extract_StorePaxDataAction_saved(
+                raw_data
+            )
+            extracted_data["flight_id"] = row["flight_id"]
+            extracted_data["action_name"] = row["action_name"]
+
+            data[row["id"]] = extracted_data
+
+        data_df = pd.DataFrame.from_dict(data, orient="index")
+        data_df.reset_index(inplace=True)
+        data_df.rename(columns={"index": "id"}, inplace=True)
+
+        first_columns = ["flight_id", "id", "action_name"]
+        following_columns = [col for col in data_df.columns if col not in first_columns]
+
+        data_df = data_df[first_columns + following_columns]
+        data_df = self.df_cleaner.remove_column_anonymization(
+            data_df, COLUMNS_CalculateWeightAndTrimAction
+        )
+        data_df.to_csv(PATH, index=False)
+
+        df.loc[df["id"].isin(data_df["id"]), "extracted_data"] = PATH
+        return df
+
+    def __process_StorePaxDataAction_received(
+        self, df: pd.DataFrame, prefix: str
+    ) -> pd.DataFrame:
+        NAME = "StorePaxDataAction"
+        PATH = self.DATA_DIR / f"{prefix}_{NAME}_saved.csv"
+
+        filtered = df[
+            (df["action_name"] == NAME) & (df["header_category"] == "received")
+        ]
+
+        data = {}
+        for _, row in filtered.iterrows():
+            raw_data = row["entry_details"]
+            extracted_data = self.regex_extractor.extract_StorePaxDataAction_received(
                 raw_data
             )
             extracted_data["flight_id"] = row["flight_id"]
