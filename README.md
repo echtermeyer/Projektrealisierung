@@ -1,5 +1,5 @@
 # Project implementation
-
+[Präsentations PowerPoint](https://sap-my.sharepoint.com/:p:/p/lasse_friedrich/EeQcF4qJAe9Ml--uC-vhVyoBIwPtghgj28sviOe2TDfJeg?e=RGU5s3)
 ### Shared collaboration files:
 | Document          | OneDrive Link                                              |
 |-------------------|------------------------------------------------------------|
