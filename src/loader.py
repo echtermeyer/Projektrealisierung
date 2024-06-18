@@ -73,3 +73,6 @@ class TripLoader:
 
         self._trips_ZYXW_data = self.__load("trips_ZYXW")
         return self._trips_ZYXW_data
+
+    def load_table(self, sheet: str) -> pd.DataFrame:
+        return pd.read_csv(self.ROOT / f"src/data/extracted/{sheet}.csv")

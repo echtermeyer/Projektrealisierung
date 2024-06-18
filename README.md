@@ -1,11 +1,12 @@
 # Project implementation
-### Shared collaboration files:
-| Document          | OneDrive Link                                              |
-|-------------------|------------------------------------------------------------|
-| Projektauftrag    | [View & Edit](https://1drv.ms/w/s!AvZXGwwhrAo8ldw-6gRVStEKGVz88w) |
-| Lasten- & Pflichtenheft        | [View & Edit](https://1drv.ms/w/s!AvZXGwwhrAo8ldw_qo5kH2ZkxTQyug) |
-| Präsentation       | [View & Edit](https://sap-my.sharepoint.com/:p:/p/lasse_friedrich/EeQcF4qJAe9Ml--uC-vhVyoBIwPtghgj28sviOe2TDfJeg?e=RGU5s3) |
 
+### Shared collaboration files:
+
+| Document                | OneDrive Link                                                                                                              |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Projektauftrag          | [View & Edit](https://1drv.ms/w/s!AvZXGwwhrAo8ldw-6gRVStEKGVz88w)                                                          |
+| Lasten- & Pflichtenheft | [View & Edit](https://1drv.ms/w/s!AvZXGwwhrAo8ldw_qo5kH2ZkxTQyug)                                                          |
+| Präsentation            | [View & Edit](https://sap-my.sharepoint.com/:p:/p/lasse_friedrich/EeQcF4qJAe9Ml--uC-vhVyoBIwPtghgj28sviOe2TDfJeg?e=RGU5s3) |
 
 ### Installation
 
@@ -22,6 +23,7 @@ Install the pre-commit hook:
 ```bash
 pre-commit install
 ```
+
 After that on windows at least you should use git commands only via venv shell, since otherwise pytest can not be executed. (Lasse)
 
 Run python scripts (no `.py` extension):
@@ -38,7 +40,11 @@ The given CSV files contain errors and cannot be used without cleaning. `TripLoa
 from src.loader import TripLoader
 
 trip_loader = TripLoader()
+
+# Load full dataset:
 trips_data = trip_loader.trips_ABCD
+# Load extracted data for 'AssignLCCAction':
+assignLCCAction = trip_loader.load_table("abcd_AssignLCCAction")
 ```
 
 ### Setup
