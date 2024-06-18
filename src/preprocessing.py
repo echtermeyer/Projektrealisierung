@@ -68,6 +68,7 @@ class Regex_Extractor:
         elif header_category == "saved":
             leg_keys = COLUMNS_UpdateFlightAction_SAVED
 
+        entry_string = entry_string.replace("\r", "")
         lines = entry_string.split("\n")
 
         extracted_dict = {}
