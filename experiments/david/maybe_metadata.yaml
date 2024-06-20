@@ -1,0 +1,69 @@
+actions:
+  - ChangeFlightLegStateAction: Change in Status (e.g. from OFFBLOCK to AIRBORNE to LANDED to ONBLOCK)
+  - ASMMsgProcessor: All sorts of stuff about the flight (dest, origin, times, aircraft number, state, etc.)
+
+
+features:
+  - START_WI_weight:
+    - Leergewicht
+    - Starting weight index (WI) weight; the initial weight measurement used in weight and balance calculations.
+  # - START_WI_index: "Starting weight index; the initial balance index used in calculations."
+  - DO_WI_weight: "Drop-off (DO) weight index weight; the weight of items dropped off during loading/unloading."
+  # - DO_WI_index: "Drop-off weight index; the balance index associated with the dropped-off items."
+  - PAX_WI_weight: "Passenger (PAX) weight index weight; the combined weight of all passengers."
+  # - PAX_WI_index: "Passenger weight index; the balance index associated with the passenger load."
+  - TOTAL_DEADLOAD_WI_weight: "Total deadload weight index weight; the combined weight of non-passenger cargo and equipment."
+  # - TOTAL_DEADLOAD_WI_index: "Total deadload weight index; the balance index for the deadload."
+  - TOTAL_LOAD_WI: "Total load weight index; the combined weight index of all onboard items, including passengers, cargo, and fuel."
+  - TOTAL_TRAFFIC_LOAD: "The total weight of the payload that generates revenue, typically passengers and cargo."
+  - FUEL_INDEX: "Fuel weight index; the balance index of the fuel load."
+  - AZFW: "Actual Zero Fuel Weight; the total weight of the aircraft and its contents, excluding fuel."
+  
+  # Final Weights
+  - ATXW: "Actual Taxi Weight; the weight of the aircraft during taxiing."
+  - ATOW: "Actual Takeoff Weight; the weight of the aircraft at the time of takeoff."
+  - ALAW: "Actual Landing Weight; the weight of the aircraft at the time of landing."
+
+  # Center of Gravity (CG) Limits (Reference Point is the Leading Edge of the Wing)
+  - AFT_LIMIT_ZFW: "Aft limit of Zero Fuel Weight; the rearmost allowable center of gravity (CG) position for zero fuel weight."
+  - FWD_LIMIT_ZFW: "Forward limit of Zero Fuel Weight; the forwardmost allowable CG position for zero fuel weight."
+  - AFT_LIMIT_TOW: "Aft limit of Takeoff Weight; the rearmost allowable CG position for takeoff weight."
+  - FWD_LIMIT_TOW: "Forward limit of Takeoff Weight; the forwardmost allowable CG position for takeoff weight."
+  - AFT_LIMIT_LAW: "Aft limit of Landing Weight; the rearmost allowable CG position for landing weight."
+  - FWD_LIMIT_LAW: "Forward limit of Landing Weight; the forwardmost allowable CG position for landing weight."
+  
+  # Lateral Imbalance
+  - LIZFW: "Loaded Index at Zero Fuel Weight; measures the center of gravity (CG) position relative to the aircraft's longitudinal axis at zero fuel weight."
+  - LITOW: "Loaded Index at Takeoff Weight; measures the center of gravity (CG) position relative to the aircraft's longitudinal axis at takeoff weight."
+  - LILAW: "Loaded Index at Landing Weight; measures the center of gravity (CG) position relative to the aircraft's longitudinal axis at landing weight."
+    
+  # Center of Gravity (CG) relative to Aircraft Wing
+  - MAC_AT_ZFW: "Mean Aerodynamic Chord (MAC) at Zero Fuel Weight; the CG position relative to the aircraft's MAC at zero fuel weight."
+  - MAC_AT_TOW: "Mean Aerodynamic Chord at Takeoff Weight; the CG position relative to the aircraft's MAC at takeoff weight."
+  - MAC_AT_LAW: "Mean Aerodynamic Chord at Landing Weight; the CG position relative to the aircraft's MAC at landing weight."
+  - DEADLOAD_MAC: "Mean Aerodynamic Chord for deadload; the CG position of the deadload relative to the aircraft's MAC."
+  
+  # Maximum Weight Limits
+  - UNDERLOAD: "The amount of weight the aircraft is under its maximum takeoff weight."
+  # - LIMITING_WEIGHT: "The maximum allowable weight for a particular phase of flight or condition."
+  - ALLOWED_TOW: "The maximum allowable Takeoff Weight."
+  - ALLOWED_ZFW: "The maximum allowable Zero Fuel Weight."
+  - ALLOWED_LAW: "The maximum allowable Landing Weight."
+  - ALLOWED_TXW: "The maximum allowable Taxi Weight."
+  
+  - STABTO: "Stabilizer trim setting for takeoff."
+  - OPTIMAL_TRIM: "The optimal stabilizer trim setting for balanced flight."
+  - IDEAL_ADDITIONAL_LOAD_AFT: "The ideal additional load that can be added to the aft section for balance."
+  - IDEAL_ADDITIONAL_LOAD_FWD: "The ideal additional load that can be added to the forward section for balance."
+  - TAIL_TIPPING_WI_weight: "Weight index weight that risks tail tipping; the weight that can cause the aircraft to tip backwards."
+  - TAIL_TIPPING_WI_index: "Weight index for tail tipping; the balance index that indicates risk of tail tipping."
+  - TAIL_TIPPING_INDEX_EXCEEDED: "Indicator of whether the tail tipping index has been exceeded."
+  - FWD_MOVABLE_PAX: "Number of passengers that can be moved forward to adjust balance."
+  - AFT_MOVABLE_PAX: "Number of passengers that can be moved aft to adjust balance."
+  - INDEX_OUT_OF_BALANCE: "Indicator of whether the weight index is out of balance."
+  - LOAD_TO_AFT: "Amount of load to be moved to the aft section for balance."
+  - LOAD_TO_FWD: "Amount of load to be moved to the forward section for balance."
+  - ESTIMATED_TRAFFIC_LOAD: "Estimated total traffic load; the estimated payload including passengers and cargo."
+  - ESTIMATED_ZFW: "Estimated Zero Fuel Weight."
+  - DELTA_ZFW: "Difference between the estimated and actual Zero Fuel Weight."
+  - ZFW_TOLERANCE_EXCEEDED: "Indicator of whether the Zero Fuel Weight tolerance has been exceeded."

@@ -1,0 +1,28 @@
+Aircraft Load and Trim
+Das Loadsheet (auch Load and trim sheet, zu deutsch „Lade-und-Trimm-Papier“) 
+ist ein für die Durchführung eines Verkehrsfluges notwendiges Ladedokument.
+
+Es wird im Rahmen der Flugvorbereitung erstellt und erfasst insbesondere das 
+Gewicht und die Verteilung von Passagieren, Kerosin, sowie Fracht, Gepäck und 
+Post, als auch die für die Durchführung des Fluges notwendigen Hilfsmittel, 
+wie Kabinenbesatzung, Trinkwasser und Catering. Das Loadsheet muss vor jedem 
+Flug berechnet und entweder manuell oder mit Hilfe eines Computersystems erstellt 
+werden und ermöglicht die Kalkulation der aktuellen Massen des Flugzeuges, 
+sowie die Darstellung der Verteilung der Gesamtladung innerhalb des Flugzeuges, 
+als auch die Schwerpunktlage des Flugzeuges.
+
+It is a legal requirement and crucial to the safety and structural integrity 
+of an aircraft that it is loaded in such a way that the specified maximum 
+allowable weights are not exceeded and that the centre of gravity as loaded 
+will be within the permitted flight envelope and remain so for the entirety 
+of the intended operation. Once these conditions have been satisfied, it is 
+equally crucial that the flight crew are aware of the prevailing weight and 
+centre of gravity so that they can set aircraft equipments appropriately; 
+these include take off reference speeds, slat/flap position, and pitch trim 
+or stabiliser position. This is important to ensure that the aircraft will 
+achieve published certified performance and that the aircraft retains expected 
+stability and control characteristics.
+
+aft -> Rearmost, opposite of forward (head)
+
+https://skybrary.aero/articles/aircraft-load-and-trim
