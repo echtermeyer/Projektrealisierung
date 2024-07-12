@@ -17,9 +17,10 @@ features:
   - TOTAL_LOAD_WI: "Total load weight index; the combined weight index of all onboard items, including passengers, cargo, and fuel."
   - TOTAL_TRAFFIC_LOAD: "The total weight of the payload that generates revenue, typically passengers and cargo."
   - FUEL_INDEX: "Fuel weight index; the balance index of the fuel load."
-  - AZFW: "Actual Zero Fuel Weight; the total weight of the aircraft and its contents, excluding fuel."
+  
   
   # Final Weights
+  - AZFW: "Actual Zero Fuel Weight; the total weight of the aircraft and its contents, excluding fuel."
   - ATXW: "Actual Taxi Weight; the weight of the aircraft during taxiing."
   - ATOW: "Actual Takeoff Weight; the weight of the aircraft at the time of takeoff."
   - ALAW: "Actual Landing Weight; the weight of the aircraft at the time of landing."

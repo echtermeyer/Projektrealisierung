@@ -1,0 +1,76 @@
+> Sorting after creation_time and id results in the same order
+> The additional default cols in the main data are from ASMMsgProcessor
+> There is no need to find out which header category is relevant for which action (Eric has done that in preprocessing)
+> Benedikts most common process is similar but not identical to the one found in this notebook
+
+> Most processes (including the most common process) have only one CalculateWeightAndTrimAction, thus no development of the weights, rendering the analysis obsolete
+> Processes vary wildely. E.g. some processes track the fuel loading while others dont. One would assume that this would be standard for all flight of the same airline.
+
+ALLOWED_ZFW, ALLOWED_LAW, ALLOWED_TXW sind unbrauchbar weil sie alle gleich dem AZFW, ALAW und ATXW sind
+
+Jedes mal wenn CalculateTrimAndWeightAction ausgeführt wird gibt es ein Estimated ZFW und das AZFW. Wir schauen uns die Differenz zwischen den einzelnen Estimations und dem letzten AZFW an.
+
+Im ASMMsgProcessor html wird erst gesagt welche attribute vom alten fight geändert werden, dann wird der alte flight angezeigt und dann der neue (also der alte mit den änderungen)
+
+Es gibt kein estimated take off weight
+
+
+------------
+
+Starting weight: 45102 (fix)
+PAX_WI_weight: 13580 (fix)
+
+START_WI_weight
+PAX_WI_weight
+
+ESTIMATED_Total_baggage (UpdateLoadTableAction) + ESTIMATED_Total_cargo (UpdateLoadTableAction) = TOTAL_LOAD_WI
+
+
+PAX_WI_weight + TOTAL_LOAD_WI = TOTAL_TRAFFIC_LOAD
+13540.0       + 1814.0        = 15354.0
+
+TOTAL_TRAFFIC_LOAD + DO_WI_WEIGHT = AZFW
+
+TOTAL_LOAD_WI + DO_WI_weight = TOTAL_DEADLOAD_WI_weight
+
+DO_WI_weight = Keine Ahnung, lässt sich nicht berechnen. Ist aber fast identisch zu Start Weight
+
+AZFW 60955.0 (zero fuel)
+ATXW 71829.0 (Taxi)
+ATOW 71631.0 (Take off)
+ALAW 67568.0 (Landing Weight)
+
+DELTA_ZFW = ESTIMATED_ZFW (t) - AZFW (t-1)
+
+ALLOWED_TOW 73021.0
+ALLOWED_TOW - ATOW = UNDERLOAD 1390.0
+
+
+-------------
+
+Die folgenden Actions bauen aufeinander auf, Granularität nimmt mit jeder Aktion ab:
+- CheckInMsgProcessor received -> Ein Table mit der aktuellen Passagier- und Gepäckanzahl, nach verschiedenen Dimensionen aufgesplittet (zb Gender oder Reiseklasse)
+- CheckinMsgProcessor saved -> Übersichtlicher Darstellung der erhaltenen Informationen
+- StorePaxDataAction -> Die Verteilung sowie die Gewichte des Gepäcks und der Passagiere (nach Gender aufgesplittet) gespeichert (high level - granularität geht verloren)
+- UpdateLoadTableAction -> Hier wird das Gesamtgewicht von Cargo und Baggage gespeichert
+- CalculateTrimAndWeightAction -> Hier werden PAX Weight, Traffic Load etc. übernommen und zahlreiche weitere Gewichte abgeleitet
+
+
+-----------
+
+Vermutung:
+
+Trigger für CalculateTrimAndWeightAction:
+1: UpdateCrewDataAction
+2: UpdateLoadTableAction (Changes in Cargo [not baggage])
+3: CheckinMsgProcessor (PAX or baggage)
+4: Verteilung von baggage, cargo und mail anschauen (vllt gibts auch nicht-passagier-flieger) [UpdateLoadTableAction]
+
+------------------
+
+Muss - grundlegende funktionen, audicall
+Soll: Videocall
+Kann: Kollaborative Dokumentbearbeitung
+Gold-Plating: Mobile-App, AI-Chatbot,
+
+

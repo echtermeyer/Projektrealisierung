@@ -1,0 +1,46 @@
+- Welche Actions sind relevant?
+--> Datensatz filtern auf flüge mit relevanten Actions [und header cats]
+
+- Wie verändert sich das ETOW während des Ladeprozesses?
+
+- Wie verändern sich die Bestandteile des ETOW während des Ladeprozesses?
+- Statistische Kennzahlen zur Differenz aus ETOW und ATOW.
+- Unterschied der stat. Kennzahlen. '' zwischen den verschiedenen Flughäfen, Abflugzeiten etc.
+
+- Wie verändert sich das center of gravity während des ladeprozesses
+
+
+--------------
+
+Advanced EDA insead of weight analysis. Potential Topics:
+
+- Which flights have > 1 leg?
+- Tracking planes (and their crew/captain?) across time (per registration)
+- über alle aktionstypen hinweg die gewichtsanalyse machen
+- Oder einzelne flüge tracken und da dann den verlauf der gewichtsdaten anschauen
+
+
+- Chart wie bei Ausgabencharts auf reddit, wo dann ATOW aufgesplittet wird in ZFW und Fuel Weight und die werden wiederum aufgesplittet etc.
+- SChauen wie der Status (ASMMsgProcessor.actualState) sich verändert, bzw. ob sich nach Airborn noch gewichtsdaten ändern
+-- vllt einen flug rauspicken und dann mit stacked bar charts die entwicklung der gewichte zeigen und mit vertikalen linien die phasen trennen
+
+------------
+
+gewichtsanalyse
+
+- Abweichung von ATOW und allowed TOW
+- Schauen wie viel fuel zu viel getankt wurde (landing weight - zero fuel)
+- Man könnte man schauen wie oft das Flugzeug out of balance (INDEX_OUT_OF_BALANCE) war und deshalb umgeschichtet werden musst
+- schauen welcher flughafen am besten belädt (in terms of balance). Über IDEAL_ADDITIONAL_LOAD_FWD. Je kleiner desto besser
+- schauen welcher flughafen am effizientesten ist (da wo UNDERLOAD am geringsten)
+- Flugzeugtypen beschreiben (größe ableiten aus starting weight, personenanzahl ableiten aus PAX_WI_weight / <durchschnittliches gewicht>)
+
+
+---------
+
+- Flugzeug-Modell-Vergleich: Starting Weight, Max PAX, max range, fuel efficiency: ~ range / (fuel on landing - fuel on takeoff)
+
+- Versions pro Subtype
+- Airlines pro Subtype
+- model = subtype + Versions
+- 
