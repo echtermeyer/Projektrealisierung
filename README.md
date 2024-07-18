@@ -9,6 +9,8 @@
 | Präsentation            | [View & Edit](https://sap-my.sharepoint.com/:p:/p/lasse_friedrich/EeQcF4qJAe9Ml--uC-vhVyoBIwPtghgj28sviOe2TDfJeg?e=RGU5s3) |
 | Report                  | [View & Edit](https://de.overleaf.com/2576562377dpnmrbbfmkgp#e85be8)                                                       |
 
+The final report is stored in [Final Report](docs/ReadyJetGo_Bericht.pdf)
+
 ### Installation
 
 Create your virtual environment using:
