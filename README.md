@@ -10,6 +10,7 @@
 | Report                  | [View & Edit](https://de.overleaf.com/2576562377dpnmrbbfmkgp#e85be8)                                                       |
 
 The final report is stored in [Final Report](docs/ReadyJetGo_Bericht.pdf)
+The final presentation is stored in [Final Presentation](docs/Ready_Jet_Go_PDF.pdf)
 
 ### Installation
 
